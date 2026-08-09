@@ -78,7 +78,7 @@ The project is primarily an exploration of how these systems can be implemented 
 
 ## Showcase
 
-![Watch the Full Showcase Video on YouTube](https://youtu.be/rrPOUG59lfo)
+![▶ Watch the Full Showcase Video on YouTube](https://www.youtube.com/watch?v=rrPOUG59lfo)
 
 ## Future Plans
 
