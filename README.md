@@ -42,8 +42,8 @@ Ball Studios is a project focused on implementing and experimenting with physics
 Clone the repository:
 
 ```bash
-git clone https://github.com/AryanTheIndoDev/Ball-Studios.git
-cd Ball-Studios
+git clone https://github.com/AryanTheIndoDev/Physics-Simulator.git
+cd Physics-Simulator
 ```
 
 Install the required dependencies:
