@@ -5,6 +5,3 @@ __pycache__/
 
 # -- Virtual Environment --
 ballenv/
-
-# -- Custom --
-adv.py
