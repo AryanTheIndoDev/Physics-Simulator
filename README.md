@@ -1,6 +1,6 @@
 # Ball Studios
 
-A 2D physics simulator built from scratch in **Python** using **Pygame-ce**.
+A 2D physics simulator built from scratch in **Python** using **pygame-ce**.
 
 ![Showcase](showcase/showcase-gif.gif)
 
@@ -86,7 +86,6 @@ The project is currently in a usable state, but there is plenty of room for expe
 
 Possible future additions include:
 
-* More accurate collision handling
 * Improved friction and rolling physics
 * Additional object types
 * Better visualization of physical quantities
@@ -96,7 +95,7 @@ Possible future additions include:
 ## Built With
 
 * **Python**
-* **Pygame-ce**
+* **pygame-ce**
 
 ## Author
 
