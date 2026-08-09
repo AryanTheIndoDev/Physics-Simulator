@@ -2,6 +2,8 @@
 
 A 2D physics simulator built from scratch in **Python** using **Pygame-ce**.
 
+![Showcase](showcase/showcase-gif.gif)
+
 Ball Studios is a project focused on implementing and experimenting with physics systems such as gravity, collisions, friction, bouncing, and object interactions.
 
 ## Features
@@ -73,6 +75,10 @@ The simulator handles things such as:
 * Momentum-based interactions
 
 The project is primarily an exploration of how these systems can be implemented and combined into a working physics simulation.
+
+## Showcase
+
+![Showcase](showcase/showcase-vid.mp4)
 
 ## Future Plans
 
