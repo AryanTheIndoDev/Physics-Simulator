@@ -6,6 +6,50 @@ A 2D physics simulator built from scratch in **Python** using **pygame-ce**.
 
 Ball Studios is a project focused on implementing and experimenting with physics systems such as gravity, collisions, friction, bouncing, and object interactions.
 
+
+## Getting Started
+
+### Download
+
+#### Windows
+
+[**Download Ball Studios**](https://github.com/AryanTheIndoDev/Physics-Simulator/releases/latest)
+
+Download the latest release and run "Ball-Studios-Windows.exe"
+
+#### macOS
+
+macOS builds are currently not available.
+
+### Manual Installation
+
+#### Requirements
+
+* Python 3.x
+* pygame-ce 2.5.x
+
+#### Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/AryanTheIndoDev/Physics-Simulator.git
+cd Physics-Simulator
+```
+
+Install the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run the simulator:
+
+```bash
+python main.py
+```
+
+
 ## Features
 
 * Multiple physics objects
@@ -31,34 +75,6 @@ Ball Studios is a project focused on implementing and experimenting with physics
 | `Esc`                 | Quit                                    |
 
 > Controls may change as the project develops.
-
-## Getting Started
-
-### Requirements
-
-* Python 3.x
-* pygame-ce 2.5.x
-
-### Installation
-
-Clone the repository:
-
-```bash
-git clone https://github.com/AryanTheIndoDev/Physics-Simulator.git
-cd Physics-Simulator
-```
-
-Install the required dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Run the simulator:
-
-```bash
-python main.py
-```
 
 ## How It Works
 
