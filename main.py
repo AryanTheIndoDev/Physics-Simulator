@@ -15,6 +15,17 @@ type Point = tuple[int, int]
 
 # Pygame Initialization
 pg.init()
+
+# Titling
+pg.display.set_caption("Ball Studios")
+
+# Iconing
+icon: Surface = Surface((32, 32), pg.SRCALPHA)
+pg.draw.circle(icon, Color(230, 0, 60), (icon.get_width() / 2, icon.get_height() / 2), icon.get_width() / 2)
+pg.draw.circle(icon, Color(26, 18, 29), (icon.get_width() / 2, icon.get_height() / 2), icon.get_width() / 2, width = 2)
+
+pg.display.set_icon(icon)
+
 # App State
 class appState:
     def __init__(self) -> None:

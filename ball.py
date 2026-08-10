@@ -43,7 +43,7 @@ class Ball:
         return self.mass * self.v
     
     def draw(self, screen: Surface, fbdMode: bool) -> None:
-        pg.draw.circle(screen, "#1a181d", self.pos, self.radius)
+        pg.draw.circle(screen, Color(26, 18, 29), self.pos, self.radius)
         pg.draw.circle(screen, self.color, self.pos, self.radius - 2)
         
         pmg: float = self.displayMomentum.magnitude()

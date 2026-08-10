@@ -23,11 +23,6 @@ class PlaceHolder(Protocol):
 # Generic Type
 T = TypeVar("T", bound = PlaceHolder)
 
-# Preview
-class Preview:
-    def __init__(self, pos: Vector2, radius) -> None:
-        self.pos: Vector2 = pos
-        self.radius: float = radius
 # World
 class World(Generic[T]):
     def __init__(self, gravity: float, friction: float, bounce: float) -> None:

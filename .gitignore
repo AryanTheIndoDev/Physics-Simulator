@@ -5,3 +5,8 @@ __pycache__/
 
 # -- Virtual Environment --
 ballenv/
+
+# -- Pyinstaller --
+*.spec
+build/
+dist/
