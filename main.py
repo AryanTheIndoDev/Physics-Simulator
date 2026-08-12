@@ -27,7 +27,7 @@ pg.draw.circle(icon, Color(26, 18, 29), (icon.get_width() / 2, icon.get_height()
 pg.display.set_icon(icon)
 
 # App State
-class appState:
+class AppState:
     def __init__(self) -> None:
 
         # Pygame stuff
@@ -41,6 +41,10 @@ class appState:
         self.mousePos: Vector2 = Vector2()
         self.previousMousePos: Vector2 = Vector2()
         self.mouseMovement: Vector2 = Vector2()
+
+        self.mouseJustPressed: tuple = pg.mouse.get_just_pressed()
+        self.mousePressed: tuple = pg.mouse.get_pressed()
+        self.mouseJustReleased: tuple = pg.mouse.get_just_released()
 
         # Options
         self.modes: list = ["summon (variable)", "summon (fixed)", "kill"]
@@ -64,8 +68,12 @@ class appState:
 
     # App Methods
     def update(self):
-        # Mouse Movement
+        # Mouse
         self.mouseMovement: Vector2 = getMouseMovement(self)
+
+        self.mousePressed: tuple = pg.mouse.get_pressed()
+        self.mouseJustPressed: tuple = pg.mouse.get_just_pressed()
+        self.mouseJustReleased: tuple = pg.mouse.get_just_released()
 
         # Background
         self.screen.fill("cyan")
@@ -81,7 +89,7 @@ class appState:
         # Modes:---
         # Add new balls (Variable)
         if self.mode == "summon (variable)":
-            if pg.mouse.get_just_pressed()[2]:
+            if self.mouseJustPressed[2]:
                 for ball in self.world.balls.members:
                     if ball.collidesWith(self.mousePos):
                         break
@@ -90,17 +98,17 @@ class appState:
                     self.inPreview: bool = True
             
             if self.inPreview:
-                if pg.mouse.get_pressed()[2]:
+                if self.mousePressed[2]:
                     self.preview.radius = min(int(self.preview.pos.distance_to(self.mousePos)),
                                             int(min(self.width, self.height) / 4))
                     self.preview.draw(self.screen)
                 
-                if pg.mouse.get_just_released()[2]:
+                if self.mouseJustReleased[2]:
                     summonBall(self.preview.pos, self.preview.radius, self.preview.color)
                     self.inPreview: bool = False
         # Add new balls (Fixed)
         if self.mode == "summon (fixed)":
-            if pg.mouse.get_just_pressed()[2]:
+            if self.mouseJustPressed[2]:
                 for ball in self.world.balls.members:
                     if ball.collidesWith(self.mousePos):
                         break
@@ -108,7 +116,7 @@ class appState:
                     summonBall(self.mousePos, self.defaultRadius, self.world.ballColor)
         # Remove balls
         if self.mode == "kill":
-            if pg.mouse.get_pressed()[2]:
+            if self.mousePressed[2]:
                 for index in range(len(self.world.balls.members) - 1, -1, -1):
                     curBall: Ball = self.world.balls.members[index]
                     if curBall.collidesWith(self.mousePos):
@@ -137,55 +145,55 @@ class appState:
     def quit(self) -> None:
         self.running: bool = False
 
-App = appState()
+app = AppState()
 
 # Helper functions
 
-def getMouseMovement(app: appState) -> Vector2:
+def getMouseMovement(app: AppState) -> Vector2:
     app.previousMousePos = app.mousePos
     app.mousePos = Vector2(pg.mouse.get_pos())
 
     return app.mousePos - app.previousMousePos
 
 def summonBall(pos: Vector2, radius: int, color: Color) -> None:
-    App.world.balls.add(Ball(pos, radius, color))
+    app.world.balls.add(Ball(pos, radius, color))
 
-def windowResize(app: appState, new_dimensions: Point):
+def windowResize(app: AppState, newDimensions: Point):
     # new dimensions
-    new_width, new_height = new_dimensions
+    newWidth, newHeight = newDimensions
     
     # clamping new dimensions
-    new_width = max(new_width, MINWIDTH) 
-    new_height = max(new_height, MINHEIGHT)
+    newWidth = max(newWidth, MINWIDTH) 
+    newHeight = max(newHeight, MINHEIGHT)
 
     # remapping ball pos
-    app.world.balls.remap((app.width, app.height), (new_width, new_height))
+    app.world.balls.remap((app.width, app.height), (newWidth, newHeight))
 
     # updating dimensions
-    app.width = new_width
-    app.height = new_height
+    app.width = newWidth
+    app.height = newHeight
 
     # resize
-    if (new_width, new_height) != event.size:
+    if (newWidth, newHeight) != newDimensions:
         app.screen = pg.display.set_mode((app.width, app.height), pg.RESIZABLE)
 
 # Mainloop
-while App.running:
+while app.running:
     for event in pg.event.get():
         # Resizing
         if event.type == pg.VIDEORESIZE:
-            windowResize(App, event.size)
+            windowResize(app, event.size)
         # Scroll
         if event.type == pg.MOUSEWHEEL:
-            App.cycleMode(event.y)
+            app.cycleMode(event.y)
         # Quit
         if event.type == pg.QUIT:
-            App.quit()
+            app.quit()
         
     # Tasks
-    App.update()
+    app.update()
 
     pg.display.update()
-    App.dt = App.clock.tick(App.fps) / 1000
+    app.dt = app.clock.tick(app.fps) / 1000
 
 pg.quit()
