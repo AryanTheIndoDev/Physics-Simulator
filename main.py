@@ -21,8 +21,8 @@ pg.display.set_caption("Ball Studios")
 
 # Iconing
 icon: Surface = Surface((32, 32), pg.SRCALPHA)
-pg.draw.circle(icon, Color(230, 0, 60), (icon.get_width() / 2, icon.get_height() / 2), icon.get_width() / 2)
-pg.draw.circle(icon, Color(26, 18, 29), (icon.get_width() / 2, icon.get_height() / 2), icon.get_width() / 2, width = 2)
+pg.draw.circle(icon, Color(230, 0, 60), (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2)
+pg.draw.circle(icon, Color(26, 18, 29), (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2, width = 2)
 
 pg.display.set_icon(icon)
 
@@ -50,16 +50,20 @@ class AppState:
         self.modes: list = ["summon (variable)", "summon (fixed)", "kill"]
         self.mode: str = self.modes[0]
 
-        # Important
+        # Mainloop variables
         self.running: bool = True
+
+        self.dt: float = 1 / 60
+        self.fps: int = 60
+
+        # UI
+        self.bgColor: Color = Color(43, 160, 205)
 
         # HUD
         self.hud: Hud = Hud()
 
         # World
         self.world: World[Ball] = World(gravity = 1500, friction = 50, bounce = 0.8)
-        self.dt: float = 1 / 60
-        self.fps: int = 60
 
         # Ball
         self.defaultRadius: int = 30
@@ -67,7 +71,7 @@ class AppState:
         self.preview: Preview = Preview(self.mousePos, self.world.ballColor)
 
     # App Methods
-    def update(self):
+    def update(self) -> None:
         # Mouse
         self.mouseMovement: Vector2 = getMouseMovement(self)
 
@@ -76,7 +80,7 @@ class AppState:
         self.mouseJustReleased: tuple = pg.mouse.get_just_released()
 
         # Background
-        self.screen.fill("cyan")
+        self.screen.fill(self.bgColor)
                     
         # Ball dragging
         for ball in self.world.balls.members:
@@ -139,7 +143,7 @@ class AppState:
         if pg.key.get_just_pressed()[pg.K_ESCAPE]:
             self.quit()
 
-    def cycleMode(self, direction: int):
+    def cycleMode(self, direction: int) -> None:
         self.mode = self.modes[(self.modes.index(self.mode) - direction) % len(self.modes)]
 
     def quit(self) -> None:
@@ -158,7 +162,7 @@ def getMouseMovement(app: AppState) -> Vector2:
 def summonBall(pos: Vector2, radius: int, color: Color) -> None:
     app.world.balls.add(Ball(pos, radius, color))
 
-def windowResize(app: AppState, newDimensions: Point):
+def windowResize(app: AppState, newDimensions: Point) -> None:
     # new dimensions
     newWidth, newHeight = newDimensions
     
@@ -189,11 +193,13 @@ while app.running:
         # Quit
         if event.type == pg.QUIT:
             app.quit()
-        
+
+    # delta time
+    app.dt = app.clock.tick(app.fps) / 1000
+
     # Tasks
     app.update()
 
     pg.display.update()
-    app.dt = app.clock.tick(app.fps) / 1000
 
 pg.quit()
