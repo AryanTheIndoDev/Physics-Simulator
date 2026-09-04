@@ -13,13 +13,15 @@ Ball Studios is a project focused on implementing and experimenting with physics
 
 #### Windows
 
-[**Download Ball Studios**](https://github.com/AryanTheIndoDev/Physics-Simulator/releases/latest)
+[**Download Ball Studios for Windows**](https://github.com/AryanTheIndoDev/Physics-Simulator/releases/latest)
 
-Download the latest release and run "Ball-Studios-Windows.exe"
+Download `Ball-Studios-Windows.zip`, extract it, and run `Ball Studios.exe`.
 
 #### macOS
 
-macOS builds are currently not available.
+[**Download Ball Studios for macOS**](https://github.com/AryanTheIndoDev/Physics-Simulator/releases/latest)
+
+Download `Ball-Studios-macOS-arm64.zip`, extract it, and run `Ball Studios` on an Apple Silicon Mac.
 
 ### Manual Installation
 
@@ -94,7 +96,7 @@ The project is primarily an exploration of how these systems can be implemented 
 
 ## Showcase
 
-[▶ Watch the Full Showcase Video on YouTube](https://www.youtube.com/watch?v=rrPOUG59lfo)
+[![Watch the Ball Studios showcase](https://img.youtube.com/vi/rrPOUG59lfo/maxresdefault.jpg)](https://www.youtube.com/watch?v=rrPOUG59lfo)
 
 ## Future Plans
 
