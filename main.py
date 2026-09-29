@@ -6,6 +6,9 @@ from ball import Ball
 from hud import Hud
 from preview import Preview
 
+import colors
+import constants as c
+
 # Global Variables
 MINWIDTH = 400
 MINHEIGHT = 300
@@ -21,8 +24,8 @@ pg.display.set_caption("Ball Studios")
 
 # Iconing
 icon: Surface = Surface((32, 32), pg.SRCALPHA)
-pg.draw.circle(icon, Color(230, 0, 60), (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2)
-pg.draw.circle(icon, Color(26, 18, 29), (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2, width = 2)
+pg.draw.circle(icon, colors.SOFTRED, (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2)
+pg.draw.circle(icon, colors.SOFTGREY, (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2, width = 2)
 
 pg.display.set_icon(icon)
 
@@ -31,8 +34,8 @@ class AppState:
     def __init__(self) -> None:
 
         # Pygame stuff
-        self.width: int = 600
-        self.height: int = 400
+        self.width: int = c.STARTWINDOWWIDTH
+        self.height: int = c.STARTWINDOWWIDTH
 
         self.screen: Surface = pg.display.set_mode((self.width, self.height), pg.RESIZABLE)
         self.clock: Clock = Clock()
@@ -53,20 +56,20 @@ class AppState:
         # Mainloop variables
         self.running: bool = True
 
-        self.dt: float = 1 / 60
-        self.fps: int = 60
+        self.targetFPS: int = c.DEFAULTTARGETFPS
+        self.dt: float = 1 / self.targetFPS
 
         # UI
-        self.bgColor: Color = Color(43, 160, 205)
+        self.bgColor: Color = colors.SILENTBLUE
 
         # HUD
         self.hud: Hud = Hud()
 
         # World
-        self.world: World[Ball] = World(gravity = 1500, friction = 50, bounce = 0.8)
+        self.world: World[Ball] = World()
 
         # Ball
-        self.defaultRadius: int = 30
+        self.defaultRadius: int = c.DEFAULTBALLRADIUS
         self.inPreview: bool = False
         self.preview: Preview = Preview(self.mousePos, self.world.ballColor)
 
@@ -78,17 +81,11 @@ class AppState:
         self.mousePressed: tuple = pg.mouse.get_pressed()
         self.mouseJustPressed: tuple = pg.mouse.get_just_pressed()
         self.mouseJustReleased: tuple = pg.mouse.get_just_released()
-
-        # Background
-        self.screen.fill(self.bgColor)
-                    
+          
         # Ball dragging
         for ball in self.world.balls.members:
             if ball.held:
                 ball.v = self.mouseMovement / self.dt
-        
-        # Draw World
-        self.world.draw(self.screen)
         
         # Modes:---
         # Add new balls (Variable)
@@ -104,8 +101,7 @@ class AppState:
             if self.inPreview:
                 if self.mousePressed[2]:
                     self.preview.radius = min(int(self.preview.pos.distance_to(self.mousePos)),
-                                            int(min(self.width, self.height) / 4))
-                    self.preview.draw(self.screen)
+                                            int(min(self.width, self.height) * c.MAXPREVIEWSIZERATIO))
                 
                 if self.mouseJustReleased[2]:
                     summonBall(self.preview.pos, self.preview.radius, self.preview.color)
@@ -133,15 +129,26 @@ class AppState:
             self.world.fbdMode = not self.world.fbdMode
 
         # World Update
-        self.world.update(self.width, self.height, self.dt, pg.mouse.get_just_pressed(),
-                          pg.mouse.get_just_released(), self.mousePos, pg.key.get_just_pressed())
-
-        # HUD
-        self.hud.draw(self.screen, self.world, self.mode, self.world.fbdMode)
+        self.world.update(self.width, self.height, self.dt, self.mouseJustPressed,
+                          self.mouseJustReleased, self.mousePos, pg.key.get_just_pressed())
 
         # Quit
         if pg.key.get_just_pressed()[pg.K_ESCAPE]:
             self.quit()
+
+    def draw(self) -> None:
+        # Background
+        self.screen.fill(self.bgColor)
+        
+        # Draw World
+        self.world.draw(self.screen)
+
+        # Draw Preview
+        if self.inPreview:
+            self.preview.draw(self.screen)
+
+        # HUD
+        self.hud.draw(self.screen, self.world, self.mode, self.world.fbdMode)
 
     def cycleMode(self, direction: int) -> None:
         self.mode = self.modes[(self.modes.index(self.mode) - direction) % len(self.modes)]
@@ -195,10 +202,11 @@ while app.running:
             app.quit()
 
     # delta time
-    app.dt = app.clock.tick(app.fps) / 1000
+    app.dt = app.clock.tick(app.targetFPS) / 1000
 
     # Tasks
     app.update()
+    app.draw()
 
     pg.display.update()
 

@@ -1,6 +1,8 @@
 import pygame as pg
 from pygame import Surface, Color, Vector2
 
+import colors
+
 class Preview:
     def __init__(self, pos: Vector2, color: Color) -> None:
         self.pos: Vector2 = pos
@@ -18,6 +20,6 @@ class Preview:
         self._radius = max(self._minRadius, value)
     
     def draw(self, screen: Surface):
-        pg.draw.circle(screen, "black", self.pos, self.radius)
+        pg.draw.circle(screen, colors.SOFTGREY, self.pos, self.radius)
         pg.draw.circle(screen, self.color, self.pos, self.radius - 2)
             

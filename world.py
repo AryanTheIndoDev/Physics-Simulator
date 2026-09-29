@@ -1,8 +1,12 @@
+import pygame as pg
+from pygame import Surface, Vector2, Color
+
 from group import Group
 from typing import Any, TypeVar, Generic, Protocol
 from gravity import GravityMode
-from pygame import Surface, Vector2, Color
-import pygame as pg
+
+import colors
+import constants as c
 
 # Type Hints Declaration
 type Point = tuple[int, int]
@@ -25,23 +29,27 @@ T = TypeVar("T", bound = PlaceHolder)
 
 # World
 class World(Generic[T]):
-    def __init__(self, gravity: float, friction: float, bounce: float) -> None:
+    def __init__(self) -> None:
 
         # Physics
-        self.gravity: float = gravity
         self.gravityMode: GravityMode = GravityMode.Down
-        self.friction: float = friction
-        self.bounce: float = bounce
+        self.gravity: float = c.DEFAULTGRAVITY
+        self.friction: float = c.DEFAULTFRICTION
+        self.bounce: float = c.DEFAULTBOUNCE
 
         # Simulation
         self.fbdMode: bool = False
         
         # Objects
         self.balls: Group[T] = Group()
-        self.ballColor: Color = Color(228, 32, 50)
-    
+        self.ballColor: Color = colors.RED
+        
     def update(self, width: int, height: int, dt: float, mouseClicks: tuple,
                mouseReleases: tuple, mousePos: Vector2, keyboard: tuple):
+        # Updating physics variables
+        self.gravity: float = c.DEFAULTGRAVITY
+        self.friction: float = c.DEFAULTFRICTION
+        self.bounce: float = c.DEFAULTBOUNCE
 
         # Ball being held or not
         if mouseClicks[0]:
@@ -68,16 +76,50 @@ class World(Generic[T]):
         self.balls.update(width, height, self, dt, mousePos)
         
         # check for collision between balls
-        self.handleCollision()
+        self.handleCollision(width, height)
 
     def draw(self, screen: Surface):
         self.balls.draw(screen, self.fbdMode)
 
-    def handleCollision(self):
+    def handleCollision(self, width: int, height: int):
         for i in range(len(self.balls.members)):
-            for j in range(i + 1, len(self.balls.members)):
+            ball1: T = self.balls.members[i]
+            pos, v, radius = ball1.pos, ball1.v, ball1.radius
 
-                ball1: T = self.balls.members[i]
+            # ball-wall collision
+            yaxis = False
+            xaxis = False
+            # y-axis
+            if pos.y - radius <= 0:
+                pos.y = radius
+                yaxis = True
+            elif pos.y + radius >= height:
+                pos.y = height - radius
+                yaxis = True
+            # resting
+            if yaxis:
+                v.y = -v.y * self.bounce
+                if abs(v.x) < 2:
+                    v.x = 0
+                if abs(v.y) < 50:
+                    v.y = 0
+            # x-axis
+            if pos.x - radius <= 0:
+                pos.x = radius
+                xaxis = True
+            elif pos.x + radius >= width:
+                pos.x = width - radius
+                xaxis = True
+            # resting
+            if xaxis:
+                v.x = -v.x * self.bounce
+                if abs(v.y) < 2:
+                    v.y = 0
+                if abs(v.x) < 50:
+                    v.x = 0
+
+            # ball-ball collision
+            for j in range(i + 1, len(self.balls.members)):
                 ball2: T = self.balls.members[j]
 
                 if ball1 is not ball2:

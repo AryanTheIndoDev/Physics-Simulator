@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 # -- Virtual Environment --
+adv.py
 ballenv/
 
 # -- Pyinstaller --
