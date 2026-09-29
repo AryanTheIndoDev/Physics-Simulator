@@ -110,6 +110,7 @@ class Ball:
                 if distance < 3 and self.v.magnitude() < 50:
                     self.pos: Vector2 = Vector2(mousePos)
                     self.v.update(0, 0)
+                    gravitation = Vector2(0, 0)
                 else:
                     gravitation = self.mass * (gravitation + damping)
                     self.forces["gravity"] = gravitation
@@ -131,7 +132,6 @@ class Ball:
     
         # movement
         self.a.update(0, 0)
-        print(self.forces)
         netForce = Vector2()
         for force in self.forces.values():
             netForce += force
