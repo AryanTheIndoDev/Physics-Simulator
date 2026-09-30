@@ -24,8 +24,8 @@ pg.display.set_caption("Ball Studios")
 
 # Iconing
 icon: Surface = Surface((32, 32), pg.SRCALPHA)
-pg.draw.circle(icon, colors.SOFTRED, (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2)
-pg.draw.circle(icon, colors.SOFTGREY, (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2, width = 2)
+pg.draw.circle(icon, colors.RED, (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2)
+pg.draw.circle(icon, colors.BALLBORDER, (icon.get_width() // 2, icon.get_height() // 2), icon.get_width() // 2, width = 2)
 
 pg.display.set_icon(icon)
 
@@ -60,7 +60,7 @@ class AppState:
         self.dt: float = 1 / self.targetFPS
 
         # UI
-        self.bgColor: Color = colors.SILENTBLUE
+        self.bgColor: Color = colors.BLACK
 
         # HUD
         self.hud: Hud = Hud()

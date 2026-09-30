@@ -20,6 +20,6 @@ class Preview:
         self._radius = max(self._minRadius, value)
     
     def draw(self, screen: Surface):
-        pg.draw.circle(screen, colors.SOFTGREY, self.pos, self.radius)
+        pg.draw.circle(screen, colors.BALLBORDER, self.pos, self.radius)
         pg.draw.circle(screen, self.color, self.pos, self.radius - 2)
             

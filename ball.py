@@ -31,7 +31,7 @@ class Ball:
         self.a: Vector2 = Vector2()
         self.forces: dict[str, Vector2] = {}
 
-        self.displayMomentum: Vector2 = Vector2()
+        self.displayVelocity: Vector2 = Vector2()
         self.displayGravity: Vector2 = Vector2()
         self.displayFriction: Vector2 = Vector2()
         self.displayNormal: Vector2 = Vector2()
@@ -49,44 +49,45 @@ class Ball:
         return self.mass * self.v
     
     def draw(self, screen: Surface, fbdMode: bool) -> None:
-        pg.draw.circle(screen, colors.SOFTGREY, self.pos, self.radius)
+        pg.draw.circle(screen, colors.BALLBORDER, self.pos, self.radius)
         pg.draw.circle(screen, self.color, self.pos, self.radius - 2)
         
-        pmg: float = self.displayMomentum.magnitude()
+        displayMomentum: Vector2 = self.displayVelocity * self.mass
+        pmg: float = displayMomentum.magnitude()
         
         if fbdMode:
             # momentum
-            if not self.held:
-                if self.v.magnitude() != 0 and self.displayMomentum.magnitude() > 5:
+            if pmg > 5:
 
-                    displayMomentumVector: Vector2 = self.displayMomentum.normalize() * (sqrt(pmg + 1) - 1) * c.MOMENTUMARROWCONSTANT
-                    drawArrow(screen, self.pos, self.pos + displayMomentumVector, colors.BRIGHTPURPLE,
-                            3, min(int(displayMomentumVector.magnitude() / 2), 10), 30, True)
+                displayMomentumVector: Vector2 = displayMomentum.normalize() * (sqrt(pmg + 1) - 1) * c.MOMENTUMARROWCONSTANT
+                drawArrow(screen, self.pos, self.pos + displayMomentumVector, colors.WHITE,
+                          3, min(int(displayMomentumVector.magnitude() / 2), 10), 30, True)
 
             # forces
             # 1. gravity
             gravity = self.displayGravity
-            if gravity.magnitude() > 0 and self.displayGravity.magnitude() > 5:
+            if self.displayGravity.magnitude() > 5:
                 displayGravityVector: Vector2 = gravity.normalize() * (sqrt(gravity.magnitude())) * c.GRAVITYARROWCONSTANT
-                drawArrow(screen, self.pos, self.pos + displayGravityVector, colors.BLACK, 3, 10, 30, True)
+                drawArrow(screen, self.pos, self.pos + displayGravityVector, colors.BRIGHTPURPLE, 3, 10, 30, True)
 
             # 2. normal
             normal = self.displayNormal
-            if normal.magnitude() > 0 and self.displayNormal.magnitude() > 5:
+            if self.displayNormal.magnitude() > 5:
                 displayNormalVector: Vector2 = normal.normalize() * (sqrt(normal.magnitude())) * c.NORMALARROWCONSTANT
                 drawArrow(screen, self.pos, self.pos + displayNormalVector, colors.SOFTGREEN, 3, 10, 30, True)
 
             # 3. friction
             friction = self.displayFriction
-            if friction.magnitude() > 0 and self.displayFriction.magnitude() > 5:
+            if self.displayFriction.magnitude() > 5:
                 displayFrictionVector: Vector2 = friction.normalize() * (sqrt(friction.magnitude())) * c.FRICTIONARROWCONSTANT
                 if displayFrictionVector.magnitude() > 5:
-                    drawArrow(screen, self.pos, self.pos + displayFrictionVector, colors.YELLOW, 3, 10, 30, True)
-
+                    startPos = self.pos + (self.gravityMode.value * (self.radius - 4))
+                    drawArrow(screen, startPos, startPos + displayFrictionVector, colors.YELLOW, 3, 10, 30, True)
 
     def update(self, width: int, height: int, world: World, dt: float, mousePos: Vector2) -> None:
         # forces redefined
         self.forces = {}
+        self.gravityMode = world.gravityMode
 
         # all forces
         # 1. gravity
@@ -141,16 +142,24 @@ class Ball:
         self.v += self.a * dt
         self.pos += self.v * dt
 
-        # display vectors
+        # setting values for all other forces
         if "normal" not in self.forces:
             normal = Vector2(0, 0)
         if "friction" not in self.forces:
             friction = Vector2(0, 0)
 
-        self.displayMomentum: Vector2 = self.displayMomentum.lerp(self.momentum, min(self.LERPCONSTANT * dt, 1))
+        # updating display vectors
+        self.displayVelocity: Vector2 = self.displayVelocity.lerp(self.v, min(self.LERPCONSTANT * dt, 1))
         self.displayGravity: Vector2 = self.displayGravity.lerp(gravitation, min(self.LERPCONSTANT * dt, 1))
         self.displayNormal: Vector2 = self.displayNormal.lerp(normal, min(self.LERPCONSTANT * dt, 1))
         self.displayFriction: Vector2 = self.displayFriction.lerp(friction, min(self.LERPCONSTANT * dt, 1))
+
+        # zeroing display vectors
+        for vector in [self.displayVelocity, self.displayGravity, self.displayNormal, self.displayFriction]:
+            if abs(vector.x) < 0.5:
+                vector.update(0, vector.y)
+            if abs(vector.y) < 0.5:
+                vector.update(vector.x, 0)
 
         # on Ground check
         self.onGround: bool = self.checkOnGround(world.gravityMode, width, height)
@@ -164,6 +173,11 @@ class Ball:
     def tryGrab(self, mousePos: Vector2) -> None:
         if Vector2(mousePos).distance_to(self.pos) <= self.radius:
             self.held = True
+
+    def releaseGrab(self) -> None:
+        if self.held:
+            self.held = False
+            self.v = Vector2(self.displayVelocity)
 
     def remap(self, originalDimensions: Point, newDimensions: Point) -> None:
         ox, oy = originalDimensions
@@ -195,8 +209,8 @@ class Ball:
             # gravity on y-axis
             if gravityMode in [GravityMode.Up, GravityMode.Down]:
                 # sliding
-                if abs(self.v.y) >= 10:
-                    return Vector2((abs(self.v.x) / dt) * c.SLIDINGFRICTIONRATIO, 0) * -copysign(1, self.v.x)
+                if abs(self.v.y) >= 100 and abs(self.v.x) >= 50:
+                    return Vector2(friction * normal.magnitude() * c.SLIDINGFRICTIONRATIO, 0) * -copysign(1, self.v.x)
                 # rolling
                 else:
                     if abs(self.v.x) <= 1:
@@ -206,8 +220,8 @@ class Ball:
             # gravity on x-axis
             if gravityMode in [GravityMode.Left, GravityMode.Right]:
                 # sliding
-                if abs(self.v.x) >= 10:
-                    return Vector2(0, (abs(self.v.y) / dt) * c.SLIDINGFRICTIONRATIO) * -copysign(1, self.v.y)
+                if abs(self.v.x) >= 100:
+                    return Vector2(0, friction * normal.magnitude() * c.SLIDINGFRICTIONRATIO) * -copysign(1, self.v.y)
                 # rolling
                 else:
                     if abs(self.v.y) <= 1:

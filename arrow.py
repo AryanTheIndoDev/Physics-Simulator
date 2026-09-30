@@ -17,8 +17,11 @@ def drawArrow(screen: Surface, startingPoint: Vector2, endingPoint: Vector2, col
     left: Vector2 = back.rotate(-headAngle) * headLength
     right: Vector2 = back.rotate(headAngle) * headLength
 
+    perpDist: Vector2 = direction * left.dot(back)
+
+    point = endingPoint + perpDist
     if filled:
-        pg.draw.polygon(screen, color, (endingPoint, endingPoint + left, endingPoint + right))
+        pg.draw.polygon(screen, color, (point, point + left, point + right))
     else:
-        pg.draw.line(screen, color, endingPoint, endingPoint + left, width)
-        pg.draw.line(screen, color, endingPoint, endingPoint + right, width)
+        pg.draw.line(screen, color, point, point + left, width)
+        pg.draw.line(screen, color, point, point + right, width)

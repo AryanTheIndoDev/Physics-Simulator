@@ -7,5 +7,5 @@ class GravityMode(Enum):
     Down = Vector2(0, 1)
     Left = Vector2(-1, 0)
     Right = Vector2(1, 0)
-    Mouse = 0
+    Mouse = Vector2(0, 0)
 

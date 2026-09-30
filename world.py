@@ -23,6 +23,7 @@ class PlaceHolder(Protocol):
     def update(self, width: int, height: int, world: Any, dt: float, mousePos: Vector2): ...
     def remap(self, originalDimensions: Point, newDimensions: Point): ...
     def tryGrab(self, mousePos: Vector2): ...
+    def releaseGrab(self): ...
 
 # Generic Type
 T = TypeVar("T", bound = PlaceHolder)
@@ -42,7 +43,7 @@ class World(Generic[T]):
         
         # Objects
         self.balls: Group[T] = Group()
-        self.ballColor: Color = colors.RED
+        self.ballColor: Color = colors.BALLFILL
         
     def update(self, width: int, height: int, dt: float, mouseClicks: tuple,
                mouseReleases: tuple, mousePos: Vector2, keyboard: tuple):
@@ -57,8 +58,7 @@ class World(Generic[T]):
                 ball.tryGrab(mousePos)  
         elif mouseReleases[0]:
             for ball in self.balls.members:
-                if ball.held:
-                    ball.held = False
+                ball.releaseGrab()
         
         # gravity mode switch
         if mouseClicks[1]:
