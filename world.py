@@ -3,7 +3,7 @@ from pygame import Surface, Vector2, Color
 
 from group import Group
 from typing import Any, TypeVar, Generic, Protocol
-from gravity import GravityMode
+from enums import GravityMode
 
 import colors
 import constants as c
@@ -36,10 +36,13 @@ class World(Generic[T]):
         self.gravityMode: GravityMode = GravityMode.Down
         self.gravity: float = c.DEFAULTGRAVITY
         self.friction: float = c.DEFAULTFRICTION
+        self.airDensity: float = c.DEFAULTAIRDENSITY
         self.bounce: float = c.DEFAULTBOUNCE
 
         # Simulation
-        self.fbdMode: bool = False
+        self.doFriction: bool = True
+        self.doDrag: bool = True
+        self.fbdMode: bool = True
         
         # Objects
         self.balls: Group[T] = Group()
@@ -47,10 +50,6 @@ class World(Generic[T]):
         
     def update(self, width: int, height: int, dt: float, mouseClicks: tuple,
                mouseReleases: tuple, mousePos: Vector2, keyboard: tuple):
-        # Updating physics variables
-        self.gravity: float = c.DEFAULTGRAVITY
-        self.friction: float = c.DEFAULTFRICTION
-        self.bounce: float = c.DEFAULTBOUNCE
 
         # Ball being held or not
         if mouseClicks[0]:

@@ -9,3 +9,7 @@ class GravityMode(Enum):
     Right = Vector2(1, 0)
     Mouse = Vector2(0, 0)
 
+class Easing(Enum):
+    EaseIn = 1
+    EaseOut = 2
+

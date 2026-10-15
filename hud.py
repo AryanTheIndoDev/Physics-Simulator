@@ -1,7 +1,7 @@
 import pygame as pg
 from pygame import Surface, Font, Rect
 
-from gravity import GravityMode
+from enums import GravityMode
 
 from typing import TypeVar, Generic, Protocol
 

@@ -1,9 +1,9 @@
 import pygame as pg
 from pygame import Vector2, Color, Surface
-from math import copysign, sqrt, cbrt
+from math import copysign, sqrt
 
 from world import World
-from gravity import GravityMode
+from enums import GravityMode
 from arrow import drawArrow
 
 import colors
@@ -12,12 +12,8 @@ import constants as c
 # Type Hints Declaration
 type Point = tuple[int, int]
 
-pg.init()
-
 # Classes
 class Ball:
-    LERPCONSTANT: float = 12.5
-
     def __init__(self, pos: Vector2, radius: float, color: Color) -> None:
         # Properties
         self.radius: float = radius
@@ -35,6 +31,7 @@ class Ball:
         self.displayGravity: Vector2 = Vector2()
         self.displayFriction: Vector2 = Vector2()
         self.displayNormal: Vector2 = Vector2()
+        self.displayDrag: Vector2 = Vector2()
 
         # States
         self.onGround: bool = False
@@ -47,42 +44,53 @@ class Ball:
     @property
     def momentum(self) -> Vector2:
         return self.mass * self.v
+
+    @momentum.setter
+    def momentum(self, value):
+        self.v = value / self.mass
     
     def draw(self, screen: Surface, fbdMode: bool) -> None:
         pg.draw.circle(screen, colors.BALLBORDER, self.pos, self.radius)
         pg.draw.circle(screen, self.color, self.pos, self.radius - 2)
         
-        displayMomentum: Vector2 = self.displayVelocity * self.mass
-        pmg: float = displayMomentum.magnitude()
         
         if fbdMode:
             # momentum
-            if pmg > 5:
-
-                displayMomentumVector: Vector2 = displayMomentum.normalize() * (sqrt(pmg + 1) - 1) * c.MOMENTUMARROWCONSTANT
-                drawArrow(screen, self.pos, self.pos + displayMomentumVector, colors.WHITE,
-                          3, min(int(displayMomentumVector.magnitude() / 2), 10), 30, True)
+            momentum = self.displayVelocity * self.mass
+            if momentum.magnitude() > self.radius / 10:
+                displayMomentumVector: Vector2 = momentum.normalize() * (sqrt(momentum.magnitude())) * c.ARROWCONSTANT
+                drawArrow(screen, self.pos, self.pos + displayMomentumVector, colors.WHITE, round(sqrt(self.radius // 3)),
+                          round(sqrt(2 * self.radius)), 30, True)
 
             # forces
             # 1. gravity
             gravity = self.displayGravity
-            if self.displayGravity.magnitude() > 5:
-                displayGravityVector: Vector2 = gravity.normalize() * (sqrt(gravity.magnitude())) * c.GRAVITYARROWCONSTANT
-                drawArrow(screen, self.pos, self.pos + displayGravityVector, colors.BRIGHTPURPLE, 3, 10, 30, True)
+            if self.displayGravity.magnitude() > self.radius / 10:
+                displayGravityVector: Vector2 = gravity.normalize() * (sqrt(gravity.magnitude())) * c.ARROWCONSTANT
+                drawArrow(screen, self.pos, self.pos + displayGravityVector, colors.BRIGHTPURPLE, round(sqrt(self.radius // 3)),
+                          round(sqrt(2 * self.radius)), 30, True)
 
             # 2. normal
             normal = self.displayNormal
-            if self.displayNormal.magnitude() > 5:
-                displayNormalVector: Vector2 = normal.normalize() * (sqrt(normal.magnitude())) * c.NORMALARROWCONSTANT
-                drawArrow(screen, self.pos, self.pos + displayNormalVector, colors.SOFTGREEN, 3, 10, 30, True)
+            if self.displayNormal.magnitude() > self.radius / 10:
+                displayNormalVector: Vector2 = normal.normalize() * (sqrt(normal.magnitude())) * c.ARROWCONSTANT
+                drawArrow(screen, self.pos, self.pos + displayNormalVector, colors.SOFTGREEN, round(sqrt(self.radius // 3)),
+                          round(sqrt(2 * self.radius)), 30, True)
 
             # 3. friction
             friction = self.displayFriction
-            if self.displayFriction.magnitude() > 5:
-                displayFrictionVector: Vector2 = friction.normalize() * (sqrt(friction.magnitude())) * c.FRICTIONARROWCONSTANT
-                if displayFrictionVector.magnitude() > 5:
-                    startPos = self.pos + (self.gravityMode.value * (self.radius - 4))
-                    drawArrow(screen, startPos, startPos + displayFrictionVector, colors.YELLOW, 3, 10, 30, True)
+            if self.displayFriction.magnitude() > self.radius / 10:
+                displayFrictionVector: Vector2 = friction.normalize() * (sqrt(friction.magnitude())) * c.ARROWCONSTANT
+                startPos = self.pos + (self.gravityMode.value * (self.radius - 4))
+                drawArrow(screen, startPos, startPos + displayFrictionVector, colors.YELLOW, round(sqrt(self.radius // 3)),
+                          round(sqrt(2 * self.radius)), 30, True)
+
+            # 4. drag
+            drag = self.displayDrag
+            if self.displayDrag.magnitude() > self.radius / 5:
+                displayDragVector: Vector2 = drag.normalize() * (sqrt(drag.magnitude())) * c.ARROWCONSTANT
+                drawArrow(screen, self.pos, self.pos + displayDragVector, colors.BLACK, round(sqrt(self.radius // 3)),
+                          round(sqrt(2 * self.radius)), 30, True)
 
     def update(self, width: int, height: int, world: World, dt: float, mousePos: Vector2) -> None:
         # forces redefined
@@ -127,10 +135,21 @@ class Ball:
             if normal.magnitude() > 0: self.forces["normal"] = normal
 
         # 3. friction
-        if self.onGround:
-            friction: Vector2 = self.applyFriction(world.friction, normal, world.gravityMode, dt)
-            if friction.magnitude() > 0: self.forces["friction"] = friction
-    
+        if world.doFriction:
+            if self.onGround:
+                friction: Vector2 = self.applyFriction(world.friction, normal, world.gravityMode, dt)
+                if friction.magnitude() > 0: self.forces["friction"] = friction
+
+        # 4. drag
+        if world.doDrag:
+            if self.v.magnitude() > 0 and not self.held:
+                drag = 0.5 * world.airDensity * c.DRAGCOEFFICIENT * (2 * self.radius) * -(self.v.normalize() * self.v.magnitude_squared())
+                if abs(drag.x) > abs(self.momentum.x / dt):
+                    drag.x = -self.momentum.x / (3 * dt)
+                if abs(drag.y) > abs(self.momentum.y / dt):
+                    drag.y = -self.momentum.y / (3 * dt)
+                self.forces["drag"] = drag
+                    
         # movement
         self.a.update(0, 0)
         netForce = Vector2()
@@ -147,15 +166,18 @@ class Ball:
             normal = Vector2(0, 0)
         if "friction" not in self.forces:
             friction = Vector2(0, 0)
+        if "drag" not in self.forces:
+            drag = Vector2(0, 0)
 
         # updating display vectors
-        self.displayVelocity: Vector2 = self.displayVelocity.lerp(self.v, min(self.LERPCONSTANT * dt, 1))
-        self.displayGravity: Vector2 = self.displayGravity.lerp(gravitation, min(self.LERPCONSTANT * dt, 1))
-        self.displayNormal: Vector2 = self.displayNormal.lerp(normal, min(self.LERPCONSTANT * dt, 1))
-        self.displayFriction: Vector2 = self.displayFriction.lerp(friction, min(self.LERPCONSTANT * dt, 1))
+        self.displayVelocity: Vector2 = self.displayVelocity.lerp(self.v, min(c.LERPCONSTANT, 1))
+        self.displayGravity: Vector2 = self.displayGravity.lerp(gravitation, min(c.LERPCONSTANT, 1))
+        self.displayNormal: Vector2 = self.displayNormal.lerp(normal, min(c.LERPCONSTANT, 1))
+        self.displayFriction: Vector2 = self.displayFriction.lerp(friction, min(c.LERPCONSTANT, 1))
+        self.displayDrag: Vector2 = self.displayDrag.lerp(drag, min(c.LERPCONSTANT, 1))
 
         # zeroing display vectors
-        for vector in [self.displayVelocity, self.displayGravity, self.displayNormal, self.displayFriction]:
+        for vector in [self.displayVelocity, self.displayGravity, self.displayNormal, self.displayFriction, self.displayDrag]:
             if abs(vector.x) < 0.5:
                 vector.update(0, vector.y)
             if abs(vector.y) < 0.5:

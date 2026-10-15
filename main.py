@@ -5,13 +5,10 @@ from world import World
 from ball import Ball
 from hud import Hud
 from preview import Preview
+from ui import UI
 
 import colors
 import constants as c
-
-# Global Variables
-MINWIDTH = 400
-MINHEIGHT = 300
 
 # Type Hints Declaration
 type Point = tuple[int, int]
@@ -32,15 +29,15 @@ pg.display.set_icon(icon)
 # App State
 class AppState:
     def __init__(self) -> None:
-
-        # Pygame stuff
+        #region - Pygame stuff
         self.width: int = c.STARTWINDOWWIDTH
-        self.height: int = c.STARTWINDOWWIDTH
+        self.height: int = c.STARTWINDOWHEIGHT
 
         self.screen: Surface = pg.display.set_mode((self.width, self.height), pg.RESIZABLE)
         self.clock: Clock = Clock()
+        #endregion
 
-        # mouse
+        #region - Mouse state
         self.mousePos: Vector2 = Vector2()
         self.previousMousePos: Vector2 = Vector2()
         self.mouseMovement: Vector2 = Vector2()
@@ -48,90 +45,122 @@ class AppState:
         self.mouseJustPressed: tuple = pg.mouse.get_just_pressed()
         self.mousePressed: tuple = pg.mouse.get_pressed()
         self.mouseJustReleased: tuple = pg.mouse.get_just_released()
+        #endregion
 
+        #region - Keyboard state
+        self.keyJustPresses = pg.key.get_just_pressed()
+        #endregion
+
+        #region - miscellaneous
         # Options
         self.modes: list = ["summon (variable)", "summon (fixed)", "kill"]
         self.mode: str = self.modes[0]
 
-        # Mainloop variables
+        # UI
+        self.ui: UI = UI(c.UIWIDTH, c.UIHEIGHT)
+        self.bgColor: Color = colors.BACKGROUND
+
+        # HUD
+        self.hud: Hud = Hud()
+        self.drawHud: bool = False
+
+        # Time Controls
+        self.playSpeed: float = 1.0
+        self.paused: bool = False
+        #endregion
+
+        #region - World
+        self.world: World[Ball] = World()
+
+        self.defaultRadius: int = c.DEFAULTBALLRADIUS
+        self.inPreview: bool = False
+        self.preview: Preview = Preview(self.mousePos, self.world.ballColor)
+        #endregion
+
+        #region - Mainloop variables
         self.running: bool = True
 
         self.targetFPS: int = c.DEFAULTTARGETFPS
         self.dt: float = 1 / self.targetFPS
-
-        # UI
-        self.bgColor: Color = colors.BLACK
-
-        # HUD
-        self.hud: Hud = Hud()
-
-        # World
-        self.world: World[Ball] = World()
-
-        # Ball
-        self.defaultRadius: int = c.DEFAULTBALLRADIUS
-        self.inPreview: bool = False
-        self.preview: Preview = Preview(self.mousePos, self.world.ballColor)
+        #endregion
 
     # App Methods
     def update(self) -> None:
+        self.dt = self.dt * self.playSpeed
+
         # Mouse
         self.mouseMovement: Vector2 = getMouseMovement(self)
 
         self.mousePressed: tuple = pg.mouse.get_pressed()
         self.mouseJustPressed: tuple = pg.mouse.get_just_pressed()
         self.mouseJustReleased: tuple = pg.mouse.get_just_released()
+
+        # Keyboard
+        self.keyJustPresses = pg.key.get_just_pressed()
           
-        # Ball dragging
-        for ball in self.world.balls.members:
-            if ball.held:
-                ball.v = self.mouseMovement / self.dt
-        
-        # Modes:---
-        # Add new balls (Variable)
-        if self.mode == "summon (variable)":
-            if self.mouseJustPressed[2]:
-                for ball in self.world.balls.members:
-                    if ball.collidesWith(self.mousePos):
-                        break
-                else:
-                    self.preview: Preview = Preview(self.mousePos, self.world.ballColor)
-                    self.inPreview: bool = True
+        if not self.paused:
+            # Ball dragging
+            for ball in self.world.balls.members:
+                if ball.held:
+                    if self.dt != 0:
+                        ball.v = self.mouseMovement / self.dt
             
-            if self.inPreview:
-                if self.mousePressed[2]:
-                    self.preview.radius = min(int(self.preview.pos.distance_to(self.mousePos)),
-                                            int(min(self.width, self.height) * c.MAXPREVIEWSIZERATIO))
+            # Modes:---
+            # Add new balls (Variable)
+            if self.mode == "summon (variable)":
+                if self.mouseJustPressed[2]:
+                    for ball in self.world.balls.members:
+                        if ball.collidesWith(self.mousePos):
+                            break
+                    else:
+                        self.preview: Preview = Preview(self.mousePos, self.world.ballColor)
+                        self.inPreview: bool = True
                 
-                if self.mouseJustReleased[2]:
-                    summonBall(self.preview.pos, self.preview.radius, self.preview.color)
-                    self.inPreview: bool = False
-        # Add new balls (Fixed)
-        if self.mode == "summon (fixed)":
-            if self.mouseJustPressed[2]:
-                for ball in self.world.balls.members:
-                    if ball.collidesWith(self.mousePos):
-                        break
-                else:
-                    summonBall(self.mousePos, self.defaultRadius, self.world.ballColor)
-        # Remove balls
-        if self.mode == "kill":
-            if self.mousePressed[2]:
-                for index in range(len(self.world.balls.members) - 1, -1, -1):
-                    curBall: Ball = self.world.balls.members[index]
-                    if curBall.collidesWith(self.mousePos):
-                        self.world.balls.kill(curBall)
-                        break  
-        # ---------
+                if self.inPreview:
+                    if self.mousePressed[2]:
+                        self.preview.radius = min(int(self.preview.pos.distance_to(self.mousePos)),
+                                                int(min(self.width, self.height) * c.MAXPREVIEWSIZERATIO))
+                    
+                    else:
+                        summonBall(self.preview.pos, self.preview.radius, self.preview.color)
+                        self.inPreview: bool = False
+            elif self.inPreview:
+                self.inPreview = False
+            # Add new balls (Fixed)
+            if self.mode == "summon (fixed)":
+                if self.mouseJustPressed[2]:
+                    for ball in self.world.balls.members:
+                        if ball.collidesWith(self.mousePos):
+                            break
+                    else:
+                        summonBall(self.mousePos, self.defaultRadius, self.world.ballColor)
+            # Remove balls
+            if self.mode == "kill":
+                if self.mousePressed[2]:
+                    for index in range(len(self.world.balls.members) - 1, -1, -1):
+                        curBall: Ball = self.world.balls.members[index]
+                        if curBall.collidesWith(self.mousePos):
+                            self.world.balls.kill(curBall)
+                            break  
+            # ---------
 
-        # FBD
-        if pg.key.get_just_pressed()[pg.K_f]:
-            self.world.fbdMode = not self.world.fbdMode
+            # FBD
+            if pg.key.get_just_pressed()[pg.K_f]:
+                self.world.fbdMode = not self.world.fbdMode
 
-        # World Update
-        self.world.update(self.width, self.height, self.dt, self.mouseJustPressed,
-                          self.mouseJustReleased, self.mousePos, pg.key.get_just_pressed())
+            # World Update
+            self.world.update(self.width, self.height, self.dt, self.mouseJustPressed,
+                            self.mouseJustReleased, self.mousePos, self.keyJustPresses)
 
+        # UI
+        self.ui.update(self.mousePos)
+
+        # Pausing
+        if self.keyJustPresses[pg.K_SPACE]:
+            self.paused = not self.paused
+        if self.keyJustPresses[pg.K_TAB]:
+            self.ui.active = not self.ui.active
+            
         # Quit
         if pg.key.get_just_pressed()[pg.K_ESCAPE]:
             self.quit()
@@ -148,7 +177,10 @@ class AppState:
             self.preview.draw(self.screen)
 
         # HUD
-        self.hud.draw(self.screen, self.world, self.mode, self.world.fbdMode)
+        if self.drawHud:
+            self.hud.draw(self.screen, self.world, self.mode, self.world.fbdMode)
+
+        self.ui.draw(self.screen)
 
     def cycleMode(self, direction: int) -> None:
         self.mode = self.modes[(self.modes.index(self.mode) - direction) % len(self.modes)]
@@ -174,8 +206,8 @@ def windowResize(app: AppState, newDimensions: Point) -> None:
     newWidth, newHeight = newDimensions
     
     # clamping new dimensions
-    newWidth = max(newWidth, MINWIDTH) 
-    newHeight = max(newHeight, MINHEIGHT)
+    newWidth = max(newWidth, c.MINWINDOWWIDTH) 
+    newHeight = max(newHeight, c.MINWINDOWHEIGHT)
 
     # remapping ball pos
     app.world.balls.remap((app.width, app.height), (newWidth, newHeight))
