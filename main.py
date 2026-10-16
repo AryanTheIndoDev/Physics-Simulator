@@ -66,7 +66,7 @@ class AppState:
         self.drawHud: bool = False
 
         # Time Controls
-        self.playSpeed: ClampedFloat = ClampedFloat(1.0, 0.1, 2.0)
+        self.playSpeed: ClampedFloat = ClampedFloat(1.0, 0.2, 2.0)
         self.paused: bool = False
         #endregion
 
@@ -100,7 +100,7 @@ class AppState:
         self.keyJustPresses = pg.key.get_just_pressed()
 
         # UI
-        self.ui.update(self.mousePos, self.mouseJustReleased, self)
+        self.ui.update(self.mousePos, self.mouseJustPressed, self.mouseJustReleased, self)
 
         if not self.paused:
             # Ball dragging
@@ -148,14 +148,14 @@ class AppState:
                             break  
             # ---------
 
-            # FBD
-            if pg.key.get_just_pressed()[pg.K_f]:
-                self.world.fbdMode = not self.world.fbdMode
-
             # World Update
             self.world.update(self.width, self.height, self.dt, self.mouseJustPressed,
                             self.mouseJustReleased, self.mousePos, self.keyJustPresses)
 
+
+        # FBD
+        if pg.key.get_just_pressed()[pg.K_f]:
+            self.world.fbdMode = not self.world.fbdMode
         # Pausing
         if self.keyJustPresses[pg.K_SPACE]:
             self.paused = not self.paused

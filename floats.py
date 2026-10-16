@@ -54,4 +54,4 @@ class ClampedFloat:
         return self._value
 
     def update(self, newValue: float):
-        self._value = clamp(newValue, self.lowerLimit, self.upperLimit)
+        self._value = float(f"{clamp(newValue, self.lowerLimit, self.upperLimit):.1f}")

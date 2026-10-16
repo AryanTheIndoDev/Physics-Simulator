@@ -42,7 +42,7 @@ class World(Generic[T]):
         # Simulation
         self.doFriction: bool = True
         self.doDrag: bool = True
-        self.fbdMode: bool = True
+        self.fbdMode: bool = False
         
         # Objects
         self.balls: Group[T] = Group()

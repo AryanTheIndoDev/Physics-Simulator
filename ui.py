@@ -1,12 +1,14 @@
 import pygame as pg
-from pygame import Surface, Rect, Vector2, Color
-from typing import Callable, Protocol, TypeVar
+from pygame import Surface, Rect, Vector2, Color, Font
+from typing import Callable, Protocol
 
 import constants as c
 import colors
 from floats import SmoothFloat, ClampedFloat
 from enums import Easing
 from arrow import drawArrow
+
+pg.font.init()
 
 class PlaceHolder(Protocol):
     paused: bool
@@ -15,19 +17,22 @@ class PlaceHolder(Protocol):
     def clearBalls(self) -> None: ...
     def toggleFBD(self) -> bool: ...
 
+def empty(*args):
+    ...
+
 # Icons
 def playIcon(source: Surface, center: Vector2, sideLength: int, color: Color, dir: int):
     r = sideLength // 2
-    leftTop = center + Vector2(-r / 2, -3 * r / 4)
-    leftBottom = center + Vector2(-r / 2, 3 * r / 4)
-    right = center + Vector2(r / 2, 0)
+    leftTop = center + Vector2(-r / 3, -r / 2)
+    leftBottom = center + Vector2(-r / 3, r / 2)
+    right = center + Vector2(r / 3, 0)
     
     pg.draw.polygon(source, color, (leftTop, leftBottom, right))
 
 def pauseIcon(source: Surface, center: Vector2, sideLength: int, color: Color, dir: int):
     r = sideLength // 2
-    leftRect = Rect(center + Vector2(-3 * r / 4, -3 * r / 4), Vector2(r / 2, 3 * r / 2))
-    rightRect = Rect(center + Vector2(r / 4, -3 * r / 4), Vector2(r / 2, 3 * r / 2))
+    leftRect = Rect(center + Vector2(-r / 2, -3 * r / 5), Vector2(r / 4, 6 * r / 5))
+    rightRect = Rect(center + Vector2(r / 4, -3 * r / 5), Vector2(r / 4, 6 * r / 5))
 
     pg.draw.rect(source, color, leftRect)
     pg.draw.rect(source, color, rightRect)
@@ -48,12 +53,12 @@ def speedIcon(source: Surface, center: Vector2, sideLength: int, color: Color, d
 
 def ballClearIcon(source: Surface, center: Vector2, sideLength: int, color: Color, dir: int):
     r = sideLength // 2
+    
+    pg.draw.circle(source, colors.BALLBORDER, center + Vector2(1, 0), r / 2)
+    pg.draw.circle(source, color, center + Vector2(1, 0), r / 2)
 
-    pg.draw.circle(source, colors.BALLBORDER, center, r / 2)
-    pg.draw.circle(source, color, center, r / 2)
-
-    pg.draw.line(source, colors.RED, center + Vector2(-r / 2, -r / 2), center + Vector2(r / 2, r / 2))
-    pg.draw.line(source, colors.RED, center + Vector2(-r / 2, r / 2), center + Vector2(r / 2, -r / 2))
+    pg.draw.line(source, colors.RED, center + Vector2(-r / 2, -r / 2), center + Vector2(r / 2, r / 2), 2)
+    pg.draw.line(source, colors.RED, center + Vector2(-r / 2, r / 2), center + Vector2(r / 2, -r / 2), 2)
 
 def showVectorsOffIcon(source: Surface, center: Vector2, sideLength: int, color: Color, dir: int):
     r = sideLength // 2
@@ -69,7 +74,7 @@ def showVectorsOnIcon(source: Surface, center: Vector2, sideLength: int, color: 
     r = sideLength // 2
 
     rect = source.get_rect(center = center)
-    pg.draw.rect(source, colors.FAINTWHITE, rect)
+    pg.draw.rect(source, colors.HAZYWHITE, rect, border_radius = 5)
 
     drawArrow(source, center + Vector2(-r / 2, -r / 2), center + Vector2(r / 2, -r / 2),
               colors.YELLOW, 3, 5, 30, True
@@ -88,14 +93,15 @@ def dropDownIcon(source: Surface, center: Vector2, sideLength: int, color: Color
     pg.draw.polygon(source, color, (left, middle, right))
 
 # Button Functions
-def playPause(app: PlaceHolder):
+def playPause(app: PlaceHolder) -> bool:
     app.paused = not app.paused
+    return app.paused
 
 def slowDown(app: PlaceHolder):
-    app.playSpeed.update(app.playSpeed.value - 0.1)
+    app.playSpeed.update(app.playSpeed.value - 0.2)
 
 def speedUp(app: PlaceHolder):
-    app.playSpeed.update(app.playSpeed.value + 0.1)
+    app.playSpeed.update(app.playSpeed.value + 0.2)
 
 def ballClear(app: PlaceHolder):
     app.clearBalls()
@@ -106,25 +112,25 @@ def showVectors(app: PlaceHolder) -> bool:
 # Elements
 class Button:
     def __init__(self, width: int, height: int, icon: Callable, action: Callable, dir: int,
-                  hasStates: bool = False, activeIcon: Callable = lambda x:None, ) -> None:
+                  hasStates: bool = False, activeIcon: Callable = empty, stateGetter: Callable = empty) -> None:
         self.width: int = width
         self.height: int = height
 
         self.rect: Rect = Rect()
 
+        self.icon: Callable = icon
         self.dir: int = dir
 
         self.hovered: bool = False
+        self.pressed: bool = False
         self.hasStates: bool = hasStates
         self.action: Callable = action
 
         if self.hasStates:
             self.active: bool = False
+            self.stateGetter: Callable = stateGetter
             self.dormantIcon: Callable = icon
             self.activeIcon: Callable = activeIcon
-
-        else:
-            self.icon: Callable = icon
         
     def draw(self, source: Surface, center: Vector2):
         self.surf: Surface = Surface((self.width, self.height), pg.SRCALPHA)
@@ -139,22 +145,56 @@ class Button:
 
         source.blit(self.surf, self.rect)
 
-    def update(self, localMousePos: Vector2, mouseJustReleased: tuple, app: PlaceHolder):
+    def update(self, localMousePos: Vector2, mouseJustPressed: tuple, mouseJustReleased: tuple, app: PlaceHolder):
         if self.rect.collidepoint(localMousePos):
             self.hovered = True
+            if mouseJustPressed[0]:
+                self.pressed = True
             if mouseJustReleased[0]:
-                if self.hasStates:
-                    self.active = self.action(app)
-                    if self.active:
-                        self.icon = self.activeIcon
+                if self.pressed:
+                    if self.hasStates:
+                        self.active = self.action(app)
                     else:
-                        self.icon = self.dormantIcon
-                else:
-                    self.action(app)
+                        self.action(app)
         else:
             self.hovered = False
 
-ballClearButton = Button(32, 32, speedIcon, slowDown, -1)
+        # resetting pressed state
+        if mouseJustReleased[0]:
+            self.pressed = False
+
+        # icon changing for state buttons
+        if self.hasStates:
+            self.active = self.stateGetter(app)
+            if self.active:
+                self.icon = self.activeIcon
+            else:
+                self.icon = self.dormantIcon
+            
+class Label:
+    def __init__(self, width: int, height: int, text: str, font: Font):
+        self.width: int = width
+        self.height: int = height
+
+        self.surf: Surface = Surface((width, height), pg.SRCALPHA)
+        self.rect: Rect = self.surf.get_rect()
+
+        self.text: str = text
+        self.font: Font = font
+
+
+    def draw(self, source: Surface, center: Vector2):
+        self.surf.fill(colors.TRANSPARENT)
+        self.rect.center = center
+
+        surf: Surface = self.font.render(self.text, True, colors.WHITE)
+        rect: Rect = surf.get_rect(center = (self.surf.width // 2, self.surf.height // 2))
+        self.surf.blit(surf, rect)
+
+        source.blit(self.surf, self.rect)
+
+    def update(self, text: str):
+        self.text: str = text
 
 # Overlay
 class UI:
@@ -176,7 +216,21 @@ class UI:
         self.hovered: bool = False
         self._active: bool = False
 
-        self.elements: list = [ballClearButton]
+        # elements
+        s = c.BUTTONSIDELENGTH
+
+        playButton = Button(s, s, playIcon, playPause, 1, True, pauseIcon, lambda app: app.paused)
+        slowDownButton = Button(s, s, speedIcon, slowDown, -1)
+        speedUpButton = Button(s, s, speedIcon, speedUp, 1)
+        ballClearButton = Button(s, s, ballClearIcon, ballClear, 1)
+        showVectorsButton = Button(s, s, showVectorsOffIcon, showVectors, 1, True, showVectorsOnIcon, lambda app: app.world.fbdMode)
+        dropDownButton = Button(s, s, dropDownIcon, lambda x: None, 1, True, lambda x: None)
+
+        speedLabel = Label(s, s, "", pg.font.SysFont("Cambria Math", 18))
+
+        self.elements: list[Button | Label] = [playButton, slowDownButton, speedLabel, speedUpButton,
+                                               ballClearButton, showVectorsButton, dropDownButton,
+                                            ]
 
     @property
     def active(self) -> bool:
@@ -193,7 +247,7 @@ class UI:
 
                 self._active = value
 
-    def update(self, mousePos: Vector2, mouseJustReleased: tuple, app: PlaceHolder):
+    def update(self, mousePos: Vector2, mouseJustPressed: tuple, mouseJustReleased: tuple, app: PlaceHolder):
         # mouse pos
         self.localMousePos = mousePos - self.rect.topleft
 
@@ -203,7 +257,9 @@ class UI:
         # elements
         for element in self.elements:
             if isinstance(element, Button):
-                element.update(self.localMousePos, mouseJustReleased, app)
+                element.update(self.localMousePos, mouseJustPressed, mouseJustReleased, app)
+            elif isinstance(element, Label):
+                element.update(f"x{app.playSpeed.value}")
         
         if self.surf.get_rect().collidepoint(self.localMousePos):
             self.hovered = True
@@ -223,9 +279,31 @@ class UI:
                      border_bottom_right_radius = borderRadius,
                 )
 
-        for element in self.elements:
-            if isinstance(element, Button):
-                element.draw(self.surf, Vector2(self.surf.width // 2, self.surf.height // 2))
+        # drawing elements
+        y = self.surf.height // 2
+
+        xGap = c.ELEMENTGAP
+        widths = [element.width for element in self.elements]
+        totalWidth = sum(widths, (len(self.elements) - 1) * xGap)
+
+        xOffset = (self.surf.width - totalWidth) / 2
+
+        currentx = xOffset
+
+        for index, element in enumerate(self.elements):
+            # left to middle
+            currentx += element.width // 2
+
+            # draw
+            element.draw(self.surf, Vector2(currentx, y))
+
+            # middle to right
+            currentx += element.width // 2
+
+            # right to next left after gap
+            if index != len(self.elements) - 1:
+                currentx += xGap
+
         screen.blit(self.surf, self.rect)
 
     def activate(self):
