@@ -7,6 +7,8 @@ YELLOW = Color(200, 200, 0)
 TRANSPARENT = Color(0, 0, 0, 0)
 HONEY = Color(207, 151, 0)
 
+SOLIDRED = Color(255, 0, 0)
+
 SOFTRED = Color(230, 0, 60)
 SOFTGREY = Color(26, 18, 29)
 SOFTGREEN = Color(0, 190, 70)
@@ -16,6 +18,9 @@ LIGHTGREY = Color(100, 100, 100)
 SILENTBLUE = Color(30, 120, 185) # bg
 SKYBLUE = Color(148, 182, 211)
 BRIGHTPURPLE = Color(89, 71, 182) # momentum arrow
+
+FAINTBLACK = Color(0, 0, 0, 50) 
+FAINTWHITE = Color(255, 255, 255, 50) 
 
 BALLBORDER = SOFTGREY
 BALLFILL = RED # RED

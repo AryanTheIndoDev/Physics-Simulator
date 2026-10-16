@@ -21,8 +21,11 @@ class Group(Generic[T]):
     def add(self, member: T) -> None:
         self.members.append(member)
     
-    def kill(self, member: T) -> None:
-        self.members.remove(member)
+    def kill(self, member: T | str = "all") -> None:
+        if isinstance(member, str):
+            self.members: list[T] = []
+        else:
+            self.members.remove(member)
     
     def draw(self, screen: Surface, fbdMode: bool) -> None:
         for member in self.members:

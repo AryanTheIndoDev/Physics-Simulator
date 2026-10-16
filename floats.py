@@ -1,5 +1,6 @@
 from enums import Easing
 import numpy as np
+from pygame.math import clamp
 
 class SmoothFloat:
     def __init__(self, value: float = 0.0) -> None:
@@ -41,3 +42,16 @@ class SmoothFloat:
             if self.curFrame == self.frames:
                 self._value = self.targetVal
                 self.active = False
+
+class ClampedFloat:
+    def __init__(self, value: float, lowerLimit: float, upperLimit: float) -> None:
+        self._value: float = value
+        self.lowerLimit: float = lowerLimit
+        self.upperLimit: float = upperLimit
+
+    @property
+    def value(self):
+        return self._value
+
+    def update(self, newValue: float):
+        self._value = clamp(newValue, self.lowerLimit, self.upperLimit)

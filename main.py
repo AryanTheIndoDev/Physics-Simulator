@@ -6,6 +6,7 @@ from ball import Ball
 from hud import Hud
 from preview import Preview
 from ui import UI
+from floats import ClampedFloat
 
 import colors
 import constants as c
@@ -65,7 +66,7 @@ class AppState:
         self.drawHud: bool = False
 
         # Time Controls
-        self.playSpeed: float = 1.0
+        self.playSpeed: ClampedFloat = ClampedFloat(1.0, 0.1, 2.0)
         self.paused: bool = False
         #endregion
 
@@ -86,7 +87,7 @@ class AppState:
 
     # App Methods
     def update(self) -> None:
-        self.dt = self.dt * self.playSpeed
+        self.dt = self.dt * self.playSpeed.value
 
         # Mouse
         self.mouseMovement: Vector2 = getMouseMovement(self)
@@ -97,7 +98,10 @@ class AppState:
 
         # Keyboard
         self.keyJustPresses = pg.key.get_just_pressed()
-          
+
+        # UI
+        self.ui.update(self.mousePos, self.mouseJustReleased, self)
+
         if not self.paused:
             # Ball dragging
             for ball in self.world.balls.members:
@@ -152,12 +156,10 @@ class AppState:
             self.world.update(self.width, self.height, self.dt, self.mouseJustPressed,
                             self.mouseJustReleased, self.mousePos, self.keyJustPresses)
 
-        # UI
-        self.ui.update(self.mousePos)
-
         # Pausing
         if self.keyJustPresses[pg.K_SPACE]:
             self.paused = not self.paused
+            self.ui.active = True
         if self.keyJustPresses[pg.K_TAB]:
             self.ui.active = not self.ui.active
             
@@ -184,6 +186,13 @@ class AppState:
 
     def cycleMode(self, direction: int) -> None:
         self.mode = self.modes[(self.modes.index(self.mode) - direction) % len(self.modes)]
+
+    def clearBalls(self) -> None:
+        self.world.balls.kill()
+
+    def toggleFBD(self) -> bool:
+        self.world.fbdMode = not self.world.fbdMode
+        return self.world.fbdMode
 
     def quit(self) -> None:
         self.running: bool = False
