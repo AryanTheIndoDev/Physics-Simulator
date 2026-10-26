@@ -6,8 +6,8 @@ type Point = tuple[int, int]
 
 # Placeholder
 class PlaceHolder(Protocol):
-    def draw(self, screen: Surface, fbdMode: bool): ...
-    def update(self, width: int, height: int, world: Any, dt: float, mousePos: Vector2): ...
+    def draw(self, screen: Surface): ...
+    def update(self, width: int, height: int, dt: float, mousePos: Vector2): ...
     def remap(self, originalDimensions: Point, newDimensions: Point): ...
 
 # Generic Type
@@ -27,13 +27,13 @@ class Group(Generic[T]):
         else:
             self.members.remove(member)
     
-    def draw(self, screen: Surface, fbdMode: bool) -> None:
+    def draw(self, screen: Surface) -> None:
         for member in self.members:
-            member.draw(screen, fbdMode)
+            member.draw(screen)
     
-    def update(self, width: int, height: int, world: Any, dt: float, mousePos: Vector2) -> None:
+    def update(self, width: int, height: int, dt: float, mousePos: Vector2) -> None:
         for member in self.members:
-            member.update(width, height, world, dt, mousePos)
+            member.update(width, height, dt, mousePos)
 
     def remap(self, originalDimensions: Point, newDimensions: Point):
         for member in self.members:

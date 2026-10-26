@@ -5,6 +5,7 @@ from math import copysign, sqrt
 from world import World
 from enums import GravityMode
 from arrow import drawArrow
+from context import ct
 
 import colors
 import constants as c
@@ -17,7 +18,7 @@ class Ball:
     def __init__(self, pos: Vector2, radius: float, color: Color) -> None:
         # Properties
         self.radius: float = radius
-        self.color: Color = color
+        self.color: Color = Color(color)
 
         # Positioning
         self.pos: Vector2 = Vector2(pos)
@@ -49,57 +50,68 @@ class Ball:
     def momentum(self, value):
         self.v = value / self.mass
     
-    def draw(self, screen: Surface, fbdMode: bool) -> None:
+    def draw(self, screen: Surface) -> None:
+        # draw ball
         pg.draw.circle(screen, colors.BALLBORDER, self.pos, self.radius)
         pg.draw.circle(screen, self.color, self.pos, self.radius - 2)
-        
-        
-        if fbdMode:
+
+        # arrow width
+        if ct.fixedArrowWidth:
+            arrowWidth = 3
+        else:
+            arrowWidth = round(sqrt(self.radius // 3))
+
+        # draw vectors
+        if ct.showVectors:
             # momentum
-            momentum = self.displayVelocity * self.mass
-            if momentum.magnitude() > self.radius / 10:
-                displayMomentumVector: Vector2 = momentum.normalize() * (sqrt(momentum.magnitude())) * c.ARROWCONSTANT
-                drawArrow(screen, self.pos, self.pos + displayMomentumVector, colors.WHITE, round(sqrt(self.radius // 3)),
-                          round(sqrt(2 * self.radius)), 30, True)
+            if ct.momentumVector:
+                momentum = self.displayVelocity * self.mass
+                if momentum.magnitude() > self.radius / 10:
+                    displayMomentumVector: Vector2 = momentum.normalize() * (sqrt(momentum.magnitude())) * ct.arrowScale.value
+                    drawArrow(screen, self.pos, self.pos + displayMomentumVector, colors.WHITE, arrowWidth,
+                            round(sqrt(2 * self.radius)), 30, True)
 
             # forces
             # 1. gravity
-            gravity = self.displayGravity
-            if self.displayGravity.magnitude() > self.radius / 10:
-                displayGravityVector: Vector2 = gravity.normalize() * (sqrt(gravity.magnitude())) * c.ARROWCONSTANT
-                drawArrow(screen, self.pos, self.pos + displayGravityVector, colors.BRIGHTPURPLE, round(sqrt(self.radius // 3)),
-                          round(sqrt(2 * self.radius)), 30, True)
+            if ct.gravityVector:
+                gravity = self.displayGravity
+                if gravity.magnitude() > self.radius / 10:
+                    displayGravityVector: Vector2 = gravity.normalize() * (sqrt(gravity.magnitude())) * ct.arrowScale.value
+                    drawArrow(screen, self.pos, self.pos + displayGravityVector, colors.BRIGHTPURPLE, arrowWidth,
+                            round(sqrt(2 * self.radius)), 30, True)
 
             # 2. normal
-            normal = self.displayNormal
-            if self.displayNormal.magnitude() > self.radius / 10:
-                displayNormalVector: Vector2 = normal.normalize() * (sqrt(normal.magnitude())) * c.ARROWCONSTANT
-                drawArrow(screen, self.pos, self.pos + displayNormalVector, colors.SOFTGREEN, round(sqrt(self.radius // 3)),
-                          round(sqrt(2 * self.radius)), 30, True)
+            if ct.normalVector:
+                normal = self.displayNormal
+                if normal.magnitude() > self.radius / 10:
+                    displayNormalVector: Vector2 = normal.normalize() * (sqrt(normal.magnitude())) * ct.arrowScale.value
+                    drawArrow(screen, self.pos, self.pos + displayNormalVector, colors.SOFTGREEN, arrowWidth,
+                            round(sqrt(2 * self.radius)), 30, True)
 
             # 3. friction
-            friction = self.displayFriction
-            if self.displayFriction.magnitude() > self.radius / 10:
-                displayFrictionVector: Vector2 = friction.normalize() * (sqrt(friction.magnitude())) * c.ARROWCONSTANT
-                startPos = self.pos + (self.gravityMode.value * (self.radius - 4))
-                drawArrow(screen, startPos, startPos + displayFrictionVector, colors.YELLOW, round(sqrt(self.radius // 3)),
-                          round(sqrt(2 * self.radius)), 30, True)
+            if ct.frictionVector:
+                friction = self.displayFriction
+                if friction.magnitude() > self.radius / 10:
+                    displayFrictionVector: Vector2 = friction.normalize() * (sqrt(friction.magnitude())) * ct.arrowScale.value
+                    startPos = self.pos + (ct.gravityMode.value * (self.radius - 4))
+                    drawArrow(screen, startPos, startPos + displayFrictionVector, colors.YELLOW, arrowWidth,
+                            round(sqrt(2 * self.radius)), 30, True)
 
             # 4. drag
-            drag = self.displayDrag
-            if self.displayDrag.magnitude() > self.radius / 5:
-                displayDragVector: Vector2 = drag.normalize() * (sqrt(drag.magnitude())) * c.ARROWCONSTANT
-                drawArrow(screen, self.pos, self.pos + displayDragVector, colors.BLACK, round(sqrt(self.radius // 3)),
-                          round(sqrt(2 * self.radius)), 30, True)
+            if ct.dragVector:
+                drag = self.displayDrag
+                if drag.magnitude() > self.radius / 5:
+                    displayDragVector: Vector2 = drag.normalize() * (sqrt(drag.magnitude())) * ct.arrowScale.value
+                    drawArrow(screen, self.pos, self.pos + displayDragVector, colors.BLACK, arrowWidth,
+                            round(sqrt(2 * self.radius)), 30, True)
 
-    def update(self, width: int, height: int, world: World, dt: float, mousePos: Vector2) -> None:
+    def update(self, width: int, height: int, dt: float, mousePos: Vector2) -> None:
         # forces redefined
         self.forces = {}
-        self.gravityMode = world.gravityMode
 
         # all forces
         # 1. gravity
-        if world.gravityMode == GravityMode.Mouse:
+        if ct.gravityMode == GravityMode.Mouse:
             if not self.held:
                 try:
                     direction: Vector2 = (mousePos - self.pos).normalize()
@@ -107,26 +119,28 @@ class Ball:
                     direction: Vector2 = Vector2(0, 0)
                 
                 distance: float = mousePos.distance_to(self.pos)
-                gravitation: Vector2 = direction * (c.G / (distance + c.GRAVITYEPSILON))
+                gravitation: Vector2 = direction * (ct.mouseGravityStrength.value * c.G / (distance + c.GRAVITYEPSILON))
 
                 radialVelocityMag: float = self.v.dot(direction)
                 radialVelocity: Vector2 = direction * radialVelocityMag
                 tangentialVelocity: Vector2 = self.v - radialVelocity 
 
-                damping: Vector2 = (-radialVelocity * c.RADIALDAMPINGCOEFFICIENT) + (-tangentialVelocity * c.TANGENTIALDAMPINGCOEFFICIENT)
+                radialDampingCoefficient: float = ct.dampingCoefficient.value
+                tangentialDampingCoefficient: float = ct.dampingCoefficient.value / 10
+                damping: Vector2 = (-radialVelocity * radialDampingCoefficient) + (-tangentialVelocity * tangentialDampingCoefficient)
 
                 # resting ball if too close and too slow
-                if distance < 3 and self.v.magnitude() < 50:
-                    self.pos: Vector2 = Vector2(mousePos)
-                    self.v.update(0, 0)
-                    gravitation = Vector2(0, 0)
+                if distance < 3 and self.v.magnitude() < 50 and ct.mouseGravityStrength.value > 0.0:
+                        self.pos: Vector2 = Vector2(mousePos)
+                        self.v.update(0, 0)
+                        gravitation = Vector2(0, 0)
                 else:
                     gravitation = self.mass * (gravitation + damping)
                     self.forces["gravity"] = gravitation
             else:
                 gravitation = Vector2(0, 0)
         else:
-            gravitation = self.mass * world.gravityMode.value * world.gravity
+            gravitation = self.mass * ct.gravityMode.value * ct.gravity.value
             self.forces["gravity"] = gravitation
 
         # 2. normal
@@ -135,15 +149,15 @@ class Ball:
             if normal.magnitude() > 0: self.forces["normal"] = normal
 
         # 3. friction
-        if world.doFriction:
+        if ct.doFriction:
             if self.onGround:
-                friction: Vector2 = self.applyFriction(world.friction, normal, world.gravityMode, dt)
+                friction: Vector2 = self.applyFriction(ct.friction.value, normal, ct.gravityMode, dt)
                 if friction.magnitude() > 0: self.forces["friction"] = friction
 
         # 4. drag
-        if world.doDrag:
+        if ct.doDrag:
             if self.v.magnitude() > 0 and not self.held:
-                drag = 0.5 * world.airDensity * c.DRAGCOEFFICIENT * (2 * self.radius) * -(self.v.normalize() * self.v.magnitude_squared())
+                drag = 0.5 * ct.airDensity.value * ct.dragCoefficient.value * (2 * self.radius) * -(self.v.normalize() * self.v.magnitude_squared())
                 if abs(drag.x) > abs(self.momentum.x / dt):
                     drag.x = -self.momentum.x / (3 * dt)
                 if abs(drag.y) > abs(self.momentum.y / dt):
@@ -170,11 +184,11 @@ class Ball:
             drag = Vector2(0, 0)
 
         # updating display vectors
-        self.displayVelocity: Vector2 = self.displayVelocity.lerp(self.v, min(c.LERPCONSTANT, 1))
-        self.displayGravity: Vector2 = self.displayGravity.lerp(gravitation, min(c.LERPCONSTANT, 1))
-        self.displayNormal: Vector2 = self.displayNormal.lerp(normal, min(c.LERPCONSTANT, 1))
-        self.displayFriction: Vector2 = self.displayFriction.lerp(friction, min(c.LERPCONSTANT, 1))
-        self.displayDrag: Vector2 = self.displayDrag.lerp(drag, min(c.LERPCONSTANT, 1))
+        self.displayVelocity: Vector2 = self.displayVelocity.lerp(self.v, min(ct.arrowSmoothing.value, 1))
+        self.displayGravity: Vector2 = self.displayGravity.lerp(gravitation, min(ct.arrowSmoothing.value, 1))
+        self.displayNormal: Vector2 = self.displayNormal.lerp(normal, min(ct.arrowSmoothing.value, 1))
+        self.displayFriction: Vector2 = self.displayFriction.lerp(friction, min(ct.arrowSmoothing.value, 1))
+        self.displayDrag: Vector2 = self.displayDrag.lerp(drag, min(ct.arrowSmoothing.value, 1))
 
         # zeroing display vectors
         for vector in [self.displayVelocity, self.displayGravity, self.displayNormal, self.displayFriction, self.displayDrag]:
@@ -184,7 +198,7 @@ class Ball:
                 vector.update(vector.x, 0)
 
         # on Ground check
-        self.onGround: bool = self.checkOnGround(world.gravityMode, width, height)
+        self.onGround: bool = self.checkOnGround(ct.gravityMode, width, height)
 
     def collidesWith(self, point: Vector2) -> bool:
         if self.pos.distance_to(point) <= self.radius:
@@ -232,7 +246,7 @@ class Ball:
             if gravityMode in [GravityMode.Up, GravityMode.Down]:
                 # sliding
                 if abs(self.v.y) >= 100 and abs(self.v.x) >= 50:
-                    return Vector2(friction * normal.magnitude() * c.SLIDINGFRICTIONRATIO, 0) * -copysign(1, self.v.x)
+                    return Vector2(friction * normal.magnitude() * ct.slidingFrictionRatio.value, 0) * -copysign(1, self.v.x)
                 # rolling
                 else:
                     if abs(self.v.x) <= 1:
@@ -243,7 +257,7 @@ class Ball:
             if gravityMode in [GravityMode.Left, GravityMode.Right]:
                 # sliding
                 if abs(self.v.x) >= 100:
-                    return Vector2(0, friction * normal.magnitude() * c.SLIDINGFRICTIONRATIO) * -copysign(1, self.v.y)
+                    return Vector2(0, friction * normal.magnitude() * ct.slidingFrictionRatio.value) * -copysign(1, self.v.y)
                 # rolling
                 else:
                     if abs(self.v.y) <= 1:

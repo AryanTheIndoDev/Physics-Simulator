@@ -4,18 +4,19 @@ from typing import Callable, Protocol
 
 import constants as c
 import colors
-from floats import SmoothFloat, ClampedFloat
+from floats import SmoothFloat
 from enums import Easing
 from arrow import drawArrow
+from images import svgs
+from context import ct
 
 pg.font.init()
 
 class PlaceHolder(Protocol):
     paused: bool
-    playSpeed: ClampedFloat
 
     def clearBalls(self) -> None: ...
-    def toggleFBD(self) -> bool: ...
+    def openSettings(self) -> None: ...
 
 def empty(*args):
     ...
@@ -83,7 +84,15 @@ def showVectorsOnIcon(source: Surface, center: Vector2, sideLength: int, color: 
               colors.BRIGHTPURPLE, 3, 5, 30, True
             )
 
-def dropDownIcon(source: Surface, center: Vector2, sideLength: int, color: Color, dir: int):
+def settingsIcon(source: Surface, center: Vector2, sideLength: int, color: Color, dir: int):
+    r = sideLength // 2
+
+    icon = pg.transform.scale(svgs.settings_surf, (3 * r / 2, 3 * r / 2))
+    rect = icon.get_rect(center = center)
+
+    source.blit(icon, rect)
+
+def hideOverlayIcon(source: Surface, center: Vector2, sideLength: int, color: Color, dir: int):
     r = sideLength // 2
 
     left = center + Vector2(-r / 2, dir * -r / 4)
@@ -93,21 +102,26 @@ def dropDownIcon(source: Surface, center: Vector2, sideLength: int, color: Color
     pg.draw.polygon(source, color, (left, middle, right))
 
 # Button Functions
-def playPause(app: PlaceHolder) -> bool:
+def playPause(app: PlaceHolder):
     app.paused = not app.paused
-    return app.paused
 
 def slowDown(app: PlaceHolder):
-    app.playSpeed.update(app.playSpeed.value - 0.2)
+    ct.update({"playSpeed": ct.playSpeed.value - 0.2})
 
 def speedUp(app: PlaceHolder):
-    app.playSpeed.update(app.playSpeed.value + 0.2)
+    ct.update({"playSpeed": ct.playSpeed.value + 0.2})
 
 def ballClear(app: PlaceHolder):
     app.clearBalls()
 
-def showVectors(app: PlaceHolder) -> bool:
-    return app.toggleFBD()
+def showVectors(app: PlaceHolder):
+    ct.update({"showVectors": not ct.showVectors})
+
+def openSettings(app: PlaceHolder):
+    app.openSettings()
+
+def hideOverlay(app):
+    app.ui.overlay.active = False
 
 # Elements
 class Button:
@@ -152,10 +166,8 @@ class Button:
                 self.pressed = True
             if mouseJustReleased[0]:
                 if self.pressed:
-                    if self.hasStates:
-                        self.active = self.action(app)
-                    else:
-                        self.action(app)
+                    self.action(app)
+
         else:
             self.hovered = False
 
@@ -197,9 +209,9 @@ class Label:
         self.text: str = text
 
 # Overlay
-class UI:
+class Overlay:
     def __init__(self, width: int, height: int) -> None:
-        #region - Overlay
+        #region - overlay
         self.width: int = width
         self.height: int = height
 
@@ -207,30 +219,31 @@ class UI:
         self.top: SmoothFloat = SmoothFloat(-self.surf.height)
 
         self.rect: Rect = self.surf.get_rect()
-
         #endregion
 
-        # state
+        #region - state
         self.localMousePos: Vector2 = Vector2()
 
-        self.hovered: bool = False
         self._active: bool = False
+        #endregion
 
-        # elements
+        # region - elements
         s = c.BUTTONSIDELENGTH
 
         playButton = Button(s, s, playIcon, playPause, 1, True, pauseIcon, lambda app: app.paused)
         slowDownButton = Button(s, s, speedIcon, slowDown, -1)
         speedUpButton = Button(s, s, speedIcon, speedUp, 1)
         ballClearButton = Button(s, s, ballClearIcon, ballClear, 1)
-        showVectorsButton = Button(s, s, showVectorsOffIcon, showVectors, 1, True, showVectorsOnIcon, lambda app: app.world.fbdMode)
-        dropDownButton = Button(s, s, dropDownIcon, lambda x: None, 1, True, lambda x: None)
+        showVectorsButton = Button(s, s, showVectorsOffIcon, showVectors, 1, True, showVectorsOnIcon, lambda app: ct.showVectors)
+        settingsButton = Button(s, s, settingsIcon, openSettings, 1)
+        hideOverlayButton = Button(s, s, hideOverlayIcon, hideOverlay, -1)
 
         speedLabel = Label(s, s, "", pg.font.SysFont("Cambria Math", 18))
 
         self.elements: list[Button | Label] = [playButton, slowDownButton, speedLabel, speedUpButton,
-                                               ballClearButton, showVectorsButton, dropDownButton,
-                                            ]
+                                               ballClearButton, showVectorsButton, settingsButton,
+                                               hideOverlayButton]
+        #endregion
 
     @property
     def active(self) -> bool:
@@ -259,13 +272,12 @@ class UI:
             if isinstance(element, Button):
                 element.update(self.localMousePos, mouseJustPressed, mouseJustReleased, app)
             elif isinstance(element, Label):
-                element.update(f"x{app.playSpeed.value}")
+                element.update(f"x{ct.playSpeed.value}")
         
         if self.surf.get_rect().collidepoint(self.localMousePos):
             self.hovered = True
         else:
             self.hovered = False
-
 
     def draw(self, screen: Surface):
         self.surf: Surface = Surface((self.width, self.height), pg.SRCALPHA)
@@ -311,10 +323,29 @@ class UI:
 
     def deactivate(self):
         self.top.setTarget(-self.surf.height, c.ANIMATIONFRAMES, easing = Easing.EaseIn)
+# Settings
+class Settings:
+    def __init__(self) -> None:
+        self.minWidthMargin: int = 20
+        self.minHeightMargin: int = 20
 
-    def checkCollision(self, point: Vector2):
-        if self.rect.collidepoint(point):
-            return True
-        else:
-            return False
+        self.maxWidth: int = 500
+        self.maxHeight: int = 400
+        
+        self.localMousePos: Vector2 = Vector2()
+        self._active: bool = False
 
+    def activate(self, app: PlaceHolder):
+        ...
+
+# UI
+class UI:
+    def __init__(self) -> None:
+        self.overlay = Overlay(c.OVERLAYWIDTH, c.OVERLAYHEIGHT)
+        self.settings = Settings()
+
+    def update(self, mousePos: Vector2, mouseJustPressed: tuple, mouseJustReleased: tuple, app: PlaceHolder):
+        self.overlay.update(mousePos, mouseJustPressed, mouseJustReleased, app)
+
+    def draw(self, screen: Surface):
+        self.overlay.draw(screen)

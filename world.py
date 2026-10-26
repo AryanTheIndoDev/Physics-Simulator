@@ -1,12 +1,10 @@
 import pygame as pg
-from pygame import Surface, Vector2, Color
+from pygame import Surface, Vector2
 
 from group import Group
-from typing import Any, TypeVar, Generic, Protocol
+from typing import TypeVar, Generic, Protocol
 from enums import GravityMode
-
-import colors
-import constants as c
+from context import ct
 
 # Type Hints Declaration
 type Point = tuple[int, int]
@@ -19,8 +17,8 @@ class PlaceHolder(Protocol):
     radius: float
     @property
     def mass(self) -> float: ...
-    def draw(self, screen: Surface, fbdMode: bool): ...
-    def update(self, width: int, height: int, world: Any, dt: float, mousePos: Vector2): ...
+    def draw(self, screen: Surface): ...
+    def update(self, width: int, height: int, dt: float, mousePos: Vector2): ...
     def remap(self, originalDimensions: Point, newDimensions: Point): ...
     def tryGrab(self, mousePos: Vector2): ...
     def releaseGrab(self): ...
@@ -32,53 +30,40 @@ T = TypeVar("T", bound = PlaceHolder)
 class World(Generic[T]):
     def __init__(self) -> None:
 
-        # Physics
-        self.gravityMode: GravityMode = GravityMode.Down
-        self.gravity: float = c.DEFAULTGRAVITY
-        self.friction: float = c.DEFAULTFRICTION
-        self.airDensity: float = c.DEFAULTAIRDENSITY
-        self.bounce: float = c.DEFAULTBOUNCE
-
-        # Simulation
-        self.doFriction: bool = True
-        self.doDrag: bool = True
-        self.fbdMode: bool = False
-        
         # Objects
         self.balls: Group[T] = Group()
-        self.ballColor: Color = colors.BALLFILL
         
     def update(self, width: int, height: int, dt: float, mouseClicks: tuple,
-               mouseReleases: tuple, mousePos: Vector2, keyboard: tuple):
+               mousePresses: tuple, mousePos: Vector2, keyboard: tuple):
 
         # Ball being held or not
         if mouseClicks[0]:
             for ball in self.balls.members:
                 ball.tryGrab(mousePos)  
-        elif mouseReleases[0]:
+        elif not mousePresses[0]:
             for ball in self.balls.members:
                 ball.releaseGrab()
         
         # gravity mode switch
         if mouseClicks[1]:
-            self.gravityMode = GravityMode.Mouse
+            ct.update({"gravityMode": GravityMode.Mouse})
         if keyboard[pg.K_UP]:
-            self.gravityMode = GravityMode.Up
+            ct.update({"gravityMode": GravityMode.Up})
         elif keyboard[pg.K_DOWN]:
-            self.gravityMode = GravityMode.Down
+            ct.update({"gravityMode": GravityMode.Down})
         elif keyboard[pg.K_LEFT]:
-            self.gravityMode = GravityMode.Left
+            ct.update({"gravityMode": GravityMode.Left})
         elif keyboard[pg.K_RIGHT]:
-            self.gravityMode = GravityMode.Right
+            ct.update({"gravityMode": GravityMode.Right})
     
         # ball updating
-        self.balls.update(width, height, self, dt, mousePos)
+        self.balls.update(width, height, dt, mousePos)
         
         # check for collision between balls
         self.handleCollision(width, height)
 
     def draw(self, screen: Surface):
-        self.balls.draw(screen, self.fbdMode)
+        self.balls.draw(screen)
 
     def handleCollision(self, width: int, height: int):
         for i in range(len(self.balls.members)):
@@ -97,7 +82,7 @@ class World(Generic[T]):
                 yaxis = True
             # resting
             if yaxis:
-                v.y = -v.y * self.bounce
+                v.y = -v.y * ct.bounce.value
                 if abs(v.x) < 2:
                     v.x = 0
                 if abs(v.y) < 50:
@@ -111,7 +96,7 @@ class World(Generic[T]):
                 xaxis = True
             # resting
             if xaxis:
-                v.x = -v.x * self.bounce
+                v.x = -v.x * ct.bounce.value
                 if abs(v.y) < 2:
                     v.y = 0
                 if abs(v.x) < 50:
@@ -135,7 +120,7 @@ class World(Generic[T]):
                         vn1: float = ball1.v.dot(normal)
                         vn2: float = ball2.v.dot(normal)
 
-                        e = self.bounce
+                        e = ct.bounce.value
 
                         new_vn1 = (vn1 * (m1 - m2 * e) + (1 + e) * m2 * vn2) / (m1 + m2)
                         new_vn2 = (vn2 * (m2 - m1 * e) + (1 + e) * m1 * vn1) / (m1 + m2)

@@ -73,6 +73,8 @@ python main.py
 | `Right Mouse Button`  | Interact with the simulation            |
 | `Mouse Scroll`        | Switch interaction mode                 |
 | `Arrow Keys`          | Change gravity direction                |
+| `Tab`                 | Toggle UI Overlay                       |
+| `Space`               | Play/Pause Simulation                   |
 | `f`                   | Toggle Free Body Diagram mode           |
 | `Esc`                 | Quit                                    |
 
@@ -87,8 +89,8 @@ The simulator handles things such as:
 * Position and velocity updates
 * Acceleration due to gravity
 * Collision detection
-* Collision resolution
 * Friction
+* Air Drag
 * Bouncing
 * Momentum-based interactions
 
@@ -104,9 +106,9 @@ The project is currently in a usable state, but there is plenty of room for expe
 
 Possible future additions include:
 
-* Improved friction and rolling physics
+* Better UI with more debug options
+* More physics concepts such as springs, ropes, etc.
 * Additional object types
-* Better visualization of physical quantities
 * Performance improvements
 * Additional simulation tools
 

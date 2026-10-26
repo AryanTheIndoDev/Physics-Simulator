@@ -1,14 +1,13 @@
 import pygame as pg
-from pygame import Surface, Font, Rect
+from pygame import Surface, Font
 
-from enums import GravityMode
+from enums import GravityMode, MouseMode
+from context import ct
 
 from typing import TypeVar, Generic, Protocol
 
 class PlaceHolder(Protocol):
     balls: list
-    gravityMode: GravityMode
-    bounce: float
 
 T = TypeVar("T", bound = PlaceHolder)
 
@@ -16,20 +15,60 @@ class Hud(Generic[T]):
     def __init__(self) -> None:
         self.font: Font = pg.font.SysFont("consolas", 20, bold = True)
         self.color: str = "white"
-    
-    def draw(self, screen: Surface, world: T, mouseMode: str, fbdMode: bool):
+
+        self.timer: float = 0.0
+
+    def resetTimer(self):
+        if self.timer == 0.0:
+            self.timer: float = 0.4
+
+    def draw(self, screen: Surface, world: T, mouseMode: MouseMode, dt: float):
+        # Update timer
+        if self.timer > 0.0:
+            self.timer -= dt
+
+            # ball text fill
+            if 0.3 <= self.timer <= 0.4:
+                ballTextFill = "red"
+            elif 0.1 <= self.timer <= 0.2:
+                ballTextFill = "red"
+            else:
+                ballTextFill = self.color
+        else:
+            self.timer = 0.0
+            ballTextFill = self.color
+
         # Debug Texts
-        ball_text: Surface = self.font.render(f"balls   : {len(world.balls)}", True, self.color)
-        gravity_text: Surface = self.font.render(f"gravity : {world.gravityMode.name.lower()}", True, self.color)
-        mouse_text: Surface = self.font.render(f"mode    : {mouseMode}", True, self.color)
-        bounce_text: Surface = self.font.render(f"bounce  : {world.bounce}", True, self.color)
-        fbd_text: Surface = self.font.render(f"fbd mode: {str(fbdMode).lower()}", True, self.color)
+        arrows = {
+            GravityMode.Up: "↑",
+            GravityMode.Left: "←",
+            GravityMode.Down: "↓",
+            GravityMode.Right: "→",
+            GravityMode.Mouse: "○",
+        }
+        mouses = {
+            MouseMode.SummonVariable: "+ var",
+            MouseMode.SummonFixed: "+ fix",
+            MouseMode.Kill: "- kill",
+        }
+
+        arrow = arrows[ct.gravityMode]
+        mouse = mouses[mouseMode]
+
+        if ct.limitBalls:
+            ballText = f"[ ● {len(world.balls)} / {int(ct.maxBalls.value)} ] "
+        else:
+            ballText = f"[ ● {len(world.balls)} ] "
+
+        restText = f"[ {arrow} {ct.gravity.value} ] [ {mouse} ]"
+        
+        ballSurf = self.font.render(ballText, True, ballTextFill)
+        restSurf = self.font.render(restText, True, self.color)
+
+        ballRect = ballSurf.get_rect(bottomleft = (0, screen.height))
+        restRect = restSurf.get_rect(bottomleft = (ballRect.w, screen.height))
 
         # blitting
-        screen.blit(mouse_text, (0, 0))
-        screen.blit(ball_text, (0, 20))
-        screen.blit(bounce_text, (0, 40))
-        screen.blit(gravity_text, (0, 60))
-        screen.blit(fbd_text, (0, 80))
-
+        screen.blit(ballSurf, ballRect)
+        screen.blit(restSurf, restRect)
         

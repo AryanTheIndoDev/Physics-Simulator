@@ -6,7 +6,9 @@ from ball import Ball
 from hud import Hud
 from preview import Preview
 from ui import UI
-from floats import ClampedFloat
+from enums import MouseMode
+from images import svgs
+from context import ct
 
 import colors
 import constants as c
@@ -54,28 +56,26 @@ class AppState:
 
         #region - miscellaneous
         # Options
-        self.modes: list = ["summon (variable)", "summon (fixed)", "kill"]
-        self.mode: str = self.modes[0]
+        self.mode: MouseMode = MouseMode.SummonVariable
 
         # UI
-        self.ui: UI = UI(c.UIWIDTH, c.UIHEIGHT)
-        self.bgColor: Color = colors.BACKGROUND
+        self.ui: UI = UI()
 
         # HUD
         self.hud: Hud = Hud()
-        self.drawHud: bool = False
 
         # Time Controls
-        self.playSpeed: ClampedFloat = ClampedFloat(1.0, 0.2, 2.0)
         self.paused: bool = False
+
+        # Svgs
+        svgs.load()
         #endregion
 
         #region - World
         self.world: World[Ball] = World()
 
-        self.defaultRadius: int = c.DEFAULTBALLRADIUS
         self.inPreview: bool = False
-        self.preview: Preview = Preview(self.mousePos, self.world.ballColor)
+        self.preview: Preview = Preview(self.mousePos, ct.ballColor)
         #endregion
 
         #region - Mainloop variables
@@ -87,7 +87,7 @@ class AppState:
 
     # App Methods
     def update(self) -> None:
-        self.dt = self.dt * self.playSpeed.value
+        dt = self.dt * ct.playSpeed.value
 
         # Mouse
         self.mouseMovement: Vector2 = getMouseMovement(self)
@@ -106,19 +106,22 @@ class AppState:
             # Ball dragging
             for ball in self.world.balls.members:
                 if ball.held:
-                    if self.dt != 0:
-                        ball.v = self.mouseMovement / self.dt
+                    if dt != 0:
+                        ball.v = self.mouseMovement / dt
             
             # Modes:---
             # Add new balls (Variable)
-            if self.mode == "summon (variable)":
+            if self.mode == MouseMode.SummonVariable:
                 if self.mouseJustPressed[2]:
                     for ball in self.world.balls.members:
                         if ball.collidesWith(self.mousePos):
                             break
                     else:
-                        self.preview: Preview = Preview(self.mousePos, self.world.ballColor)
-                        self.inPreview: bool = True
+                        if self.canSummon():
+                            self.preview: Preview = Preview(self.mousePos, ct.ballColor)
+                            self.inPreview: bool = True
+                        else:
+                            self.hud.resetTimer()
                 
                 if self.inPreview:
                     if self.mousePressed[2]:
@@ -131,15 +134,18 @@ class AppState:
             elif self.inPreview:
                 self.inPreview = False
             # Add new balls (Fixed)
-            if self.mode == "summon (fixed)":
+            if self.mode == MouseMode.SummonFixed:
                 if self.mouseJustPressed[2]:
                     for ball in self.world.balls.members:
                         if ball.collidesWith(self.mousePos):
                             break
                     else:
-                        summonBall(self.mousePos, self.defaultRadius, self.world.ballColor)
+                        if self.canSummon():
+                            summonBall(self.mousePos, int(ct.ballRadius.value), ct.ballColor)
+                        else:
+                            self.hud.resetTimer()
             # Remove balls
-            if self.mode == "kill":
+            if self.mode == MouseMode.Kill:
                 if self.mousePressed[2]:
                     for index in range(len(self.world.balls.members) - 1, -1, -1):
                         curBall: Ball = self.world.balls.members[index]
@@ -149,27 +155,27 @@ class AppState:
             # ---------
 
             # World Update
-            self.world.update(self.width, self.height, self.dt, self.mouseJustPressed,
-                            self.mouseJustReleased, self.mousePos, self.keyJustPresses)
-
-
+            self.world.update(self.width, self.height, dt, self.mouseJustPressed,
+                            self.mousePressed, self.mousePos, self.keyJustPresses)
+        
         # FBD
-        if pg.key.get_just_pressed()[pg.K_f]:
-            self.world.fbdMode = not self.world.fbdMode
+        if self.keyJustPresses[pg.K_f]:
+            ct.update({"showVectors": not ct.showVectors})
         # Pausing
         if self.keyJustPresses[pg.K_SPACE]:
             self.paused = not self.paused
-            self.ui.active = True
+            self.ui.overlay.active = True
+        # Overlay
         if self.keyJustPresses[pg.K_TAB]:
-            self.ui.active = not self.ui.active
-            
+            self.ui.overlay.active = not self.ui.overlay.active
+        
         # Quit
         if pg.key.get_just_pressed()[pg.K_ESCAPE]:
             self.quit()
 
     def draw(self) -> None:
         # Background
-        self.screen.fill(self.bgColor)
+        self.screen.fill(ct.bgColor)
         
         # Draw World
         self.world.draw(self.screen)
@@ -179,20 +185,41 @@ class AppState:
             self.preview.draw(self.screen)
 
         # HUD
-        if self.drawHud:
-            self.hud.draw(self.screen, self.world, self.mode, self.world.fbdMode)
+        if ct.showHUD:
+            self.hud.draw(self.screen, self.world, self.mode, self.dt)
 
         self.ui.draw(self.screen)
 
+        # Mouse Hints
+        self.drawMouseMode(self.mousePos)
+
     def cycleMode(self, direction: int) -> None:
-        self.mode = self.modes[(self.modes.index(self.mode) - direction) % len(self.modes)]
+        app.mode = app.mode.cycleMode(-direction)
+
+    def canSummon(self) -> bool:
+        return not ct.limitBalls or (len(self.world.balls) < int(ct.maxBalls.value))
+
+    def drawMouseMode(self, mousePos: Vector2) -> None:
+        # Draw only when mouse on Window
+        if pg.mouse.get_focused():
+            if self.mode == MouseMode.SummonVariable:
+                ...
+            elif self.mode == MouseMode.SummonFixed:
+                pg.draw.circle(self.screen, ct.ballColor, mousePos + Vector2(8, -2), 4)
+                pg.draw.circle(self.screen, colors.BALLBORDER, mousePos + Vector2(8, -2), 4, 1)
+
+            elif self.mode == MouseMode.Kill:
+                pg.draw.line(self.screen, colors.BLACK, mousePos + Vector2(5, -5), mousePos + Vector2(11, 1), 3)
+                pg.draw.line(self.screen, colors.BLACK, mousePos + Vector2(5, 1), mousePos + Vector2(11, -5), 3)
+        
+                pg.draw.line(self.screen, colors.SOLIDRED, mousePos + Vector2(5, -5), mousePos + Vector2(11, 1), 2)
+                pg.draw.line(self.screen, colors.SOLIDRED, mousePos + Vector2(5, 1), mousePos + Vector2(11, -5), 2)
 
     def clearBalls(self) -> None:
         self.world.balls.kill()
 
-    def toggleFBD(self) -> bool:
-        self.world.fbdMode = not self.world.fbdMode
-        return self.world.fbdMode
+    def openSettings(self) -> None:
+        self.ui.settings.activate(self)
 
     def quit(self) -> None:
         self.running: bool = False
@@ -208,7 +235,8 @@ def getMouseMovement(app: AppState) -> Vector2:
     return app.mousePos - app.previousMousePos
 
 def summonBall(pos: Vector2, radius: int, color: Color) -> None:
-    app.world.balls.add(Ball(pos, radius, color))
+    if app.canSummon():
+        app.world.balls.add(Ball(pos, radius, color))
 
 def windowResize(app: AppState, newDimensions: Point) -> None:
     # new dimensions
@@ -246,8 +274,8 @@ while app.running:
     app.dt = app.clock.tick(app.targetFPS) / 1000
 
     # Tasks
-    app.update()
     app.draw()
+    app.update()
 
     pg.display.update()
 

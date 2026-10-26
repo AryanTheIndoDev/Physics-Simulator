@@ -6,7 +6,7 @@ import colors
 class Preview:
     def __init__(self, pos: Vector2, color: Color) -> None:
         self.pos: Vector2 = pos
-        self.color: Color = color
+        self.color: Color = Color(color)
 
         self._minRadius: int = 10
         self._radius: int = self._minRadius
